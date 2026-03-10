@@ -64,7 +64,17 @@
               <!-- 1. Tree ID -->
               <div class="px-5 pt-4 pb-3 border-b border-slate-100">
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tree ID</p>
-                <p class="text-xl font-bold text-primary mt-0.5">{{ selectedTree.treeId }}</p>
+                <div class="mt-0.5 flex items-center justify-between gap-3">
+                  <p class="text-xl font-bold text-primary">{{ selectedTree.treeId }}</p>
+                  @if (latestMetric?.healthCondition ?? latestMetric?.condition) {
+                    @let cond = (latestMetric?.healthCondition ?? latestMetric?.condition);
+                    <p-tag
+                      [value]="cond"
+                      [severity]="cond === 'Good' ? 'success' : cond === 'Dead' ? 'secondary' : 'warn'"
+                      styleClass="text-[10px] shrink-0"
+                    />
+                  }
+                </div>
                 <p class="text-xs text-slate-500 mt-1">Coordinates: {{ selectedTree.xCoordinate | number:'1.4-4' }}, {{ selectedTree.yCoordinate | number:'1.4-4' }}</p>
               </div>
 
@@ -129,6 +139,27 @@
                             </span>
                           </div>
 
+                          <div class="flex flex-wrap gap-2 mt-1">
+                            @if (metric.existingForm) {
+                              <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
+                                <span class="font-semibold">Form</span>
+                                <span>{{ metric.existingForm }}</span>
+                              </span>
+                            }
+                            @if (metric.amenityValue) {
+                              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700">
+                                <span class="font-semibold">Amenity</span>
+                                <span>{{ metric.amenityValue }}</span>
+                              </span>
+                            }
+                            @if (metric.transplantSurvival) {
+                              <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
+                                <span class="font-semibold">Survival</span>
+                                <span>{{ metric.transplantSurvival }}</span>
+                              </span>
+                            }
+                          </div>
+
                           @if (metric.remarks) {
                             <p class="text-xs text-slate-600 leading-relaxed">{{ metric.remarks }}</p>
                           }
@@ -163,23 +194,8 @@
                 </div>
               }
 
-              <!-- 4. Chart (height trend, no grids, primary colour) -->
-              @if (sparklineData.length > 1) {
-                <div class="px-5 py-4 border-b border-slate-100">
-                  <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Height trend</p>
-                  <div class="h-[80px] w-full">
-                    <app-sparkline [data]="sparklineData" [color]="chartPrimary" />
-                  </div>
-                </div>
-              }
 
-              <!-- Photo strip (optional) -->
-              @if (selectedTreePhoto) {
-                <div class="px-5 py-3 border-b border-slate-100">
-                  <div class="aspect-video rounded-lg bg-slate-100 bg-cover bg-center" [style.background-image]="'url(' + selectedTreePhoto + ')'"></div>
-                </div>
-              }
-
+              
             </div>
           </aside>
         }
@@ -234,8 +250,8 @@
                 </div>
                 <div class="w-px h-8 bg-slate-200"></div>
                 <div class="flex flex-col">
-                  <span class="text-2xl font-bold text-primary">{{ canopyGoal }}%</span>
-                  <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Canopy Goal</span>
+                  <span class="text-2xl font-bold text-primary">{{ speciesCount | number }}</span>
+                  <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Species Count</span>
                 </div>
                 @if (avgHeight) {
                   <div class="w-px h-8 bg-slate-200"></div>

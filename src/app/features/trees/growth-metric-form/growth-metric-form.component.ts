@@ -60,7 +60,11 @@ import { Tree } from '../../../core/models/tree.model';
           @if (form.value.selectedTree?.treeId) {
             <div class="mt-3 p-3 bg-sage/10 rounded-lg">
               <p class="text-sm"><strong>Tree ID:</strong> {{ form.value.selectedTree.treeId }}</p>
-              <p class="text-sm"><strong>Species:</strong> {{ form.value.selectedTree.commonName }} ({{ form.value.selectedTree.scientificName }})</p>
+              <p class="text-sm">
+                <strong>Species:</strong>
+                {{ form.value.selectedTree.commonName ?? form.value.selectedTree.species?.commonName ?? '—' }}
+                ({{ form.value.selectedTree.scientificName ?? form.value.selectedTree.species?.scientificName ?? '—' }})
+              </p>
             </div>
           }
         </p-card>
@@ -204,7 +208,7 @@ export class GrowthMetricFormComponent implements OnInit {
     this.treeService.getAll({ limit: 1000 }).subscribe((res) => {
       this.trees = res.items.map((t) => ({
         ...t,
-        displayLabel: `${t.treeId} - ${t.commonName}`,
+        displayLabel: `${t.treeId} - ${t.commonName ?? t.species?.commonName ?? 'Unknown species'}`,
       }));
     });
   }

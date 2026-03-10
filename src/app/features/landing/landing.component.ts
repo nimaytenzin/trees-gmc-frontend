@@ -75,6 +75,18 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.selectedTree?.growthMetrics?.length) return [];
     return [...this.selectedTree.growthMetrics].reverse().map((m) => m.heightM);
   }
+
+  /** DBH trend for sparkline (oldest to newest). */
+  get sparklineDbhData(): number[] {
+    if (!this.selectedTree?.growthMetrics?.length) return [];
+    return [...this.selectedTree.growthMetrics].reverse().map((m) => m.dbhCm);
+  }
+
+  /** Canopy trend for sparkline (oldest to newest). */
+  get sparklineCanopyData(): number[] {
+    if (!this.selectedTree?.growthMetrics?.length) return [];
+    return [...this.selectedTree.growthMetrics].reverse().map((m) => m.canopySpreadM);
+  }
   readonly chartPrimary = CHART_PRIMARY;
 
   /** Resolves asset icon path so it works from any route (dev and prod). */
@@ -84,7 +96,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   totalTrees = 0;
-  canopyGoal = 84;
+  speciesCount = 0;
   avgHeight = '';
   searchQuery = '';
   searchResults: Tree[] = [];
@@ -148,12 +160,14 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.treeService.getPublicStatistics().subscribe({
       next: (stats) => {
         this.totalTrees = stats.total;
+        this.speciesCount = stats.speciesCount ?? 0;
         if (stats.avgMetrics?.avgHeight) {
           this.avgHeight = parseFloat(stats.avgMetrics.avgHeight).toFixed(1);
         }
       },
       error: () => {
         this.totalTrees = 0;
+        this.speciesCount = 0;
       },
     });
   }

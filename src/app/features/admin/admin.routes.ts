@@ -19,6 +19,14 @@ export const ADMIN_ROUTES: Routes = [
       ),
   },
   {
+    path: 'species',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+      import('./species-management/species-management.component').then(
+        (m) => m.SpeciesManagementComponent,
+      ),
+  },
+  {
     path: 'users',
     canActivate: [adminGuard],
     loadComponent: () =>

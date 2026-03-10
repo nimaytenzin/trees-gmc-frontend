@@ -14,7 +14,22 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-sparkline',
   standalone: true,
-  template: `<canvas #canvas height="40"></canvas>`,
+  template: `<canvas #canvas class="sparkline-canvas"></canvas>`,
+  styles: [
+    `
+      :host {
+        display: block;
+        width: 100%;
+        height: 40px; /* sensible default; parent can override */
+        position: relative;
+      }
+      .sparkline-canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+      }
+    `,
+  ],
 })
 export class SparklineComponent implements AfterViewInit, OnChanges {
   @Input() data: number[] = [];
@@ -24,16 +39,19 @@ export class SparklineComponent implements AfterViewInit, OnChanges {
   private chart: Chart | null = null;
 
   ngAfterViewInit(): void {
-    this.renderChart();
+    // Defer initial render so the browser has computed layout
+    queueMicrotask(() => this.renderChart());
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['data'] && this.canvas) {
-      this.renderChart();
-    }
+    if (!changes['data']) return;
+    // If the view isn't ready yet, ngAfterViewInit will handle the first render
+    if (!this.canvas?.nativeElement) return;
+    this.renderChart();
   }
 
   private renderChart(): void {
+    if (!this.canvas?.nativeElement) return;
     if (this.chart) this.chart.destroy();
 
     const config = {

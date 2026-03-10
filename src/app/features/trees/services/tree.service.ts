@@ -125,6 +125,18 @@ export class TreeService {
       .pipe(map((r) => r.data));
   }
 
+  updateSpecies(id: string, data: Partial<Species>): Observable<Species> {
+    return this.http
+      .put<{ data: Species }>(`${this.SPECIES_API}/${id}`, data)
+      .pipe(map((r) => r.data));
+  }
+
+  deleteSpecies(id: string): Observable<{ message: string }> {
+    return this.http
+      .delete<{ data: { message: string } }>(`${this.SPECIES_API}/${id}`)
+      .pipe(map((r) => r.data));
+  }
+
   // --- Growth Metrics ---
 
   addGrowthMetric(treeId: string, data: any): Observable<GrowthMetric> {

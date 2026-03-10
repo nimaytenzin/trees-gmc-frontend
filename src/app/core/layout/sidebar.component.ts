@@ -61,6 +61,14 @@ import { AuthService } from '../services/auth.service';
             <i class="pi pi-map"></i>
             @if (!collapsed) { <span>Survey Areas</span> }
           </a>
+          <a
+            routerLink="/app/dashboard/species"
+            routerLinkActive="bg-white/15"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <i class="pi pi-book"></i>
+            @if (!collapsed) { <span>Species</span> }
+          </a>
         }
         <a
           routerLink="/app/trees/register"

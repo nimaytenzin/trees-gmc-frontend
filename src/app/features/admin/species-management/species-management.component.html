@@ -1,0 +1,120 @@
+<p-toast />
+
+<div class="species-page">
+  <div class="header">
+    <div>
+      <h1 class="title">Species Management</h1>
+      <p class="subtitle">Create, edit, and delete species used in tree records</p>
+    </div>
+    <div class="actions">
+      <div class="w-72 hidden md:block">
+        <p-inputgroup>
+          <p-inputgroup-addon>
+            <i class="pi pi-search"></i>
+          </p-inputgroup-addon>
+          <input pInputText [(ngModel)]="search" placeholder="Search species..." class="w-full" />
+        </p-inputgroup>
+      </div>
+      <p-button icon="pi pi-plus" label="Add species" (onClick)="openCreate()" />
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-stone-200 overflow-hidden">
+    <div class="p-4 border-b border-stone-100 flex items-center justify-between">
+      <div class="font-semibold text-stone-700">All species</div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-stone-400">{{ filtered.length }} items</span>
+        <p-button icon="pi pi-refresh" severity="secondary" [outlined]="true" (onClick)="load()" />
+      </div>
+    </div>
+
+    <p-table [value]="filtered" [loading]="loading" styleClass="p-datatable-sm" [rowHover]="true">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Species ID</th>
+          <th>Common name</th>
+          <th>Scientific name</th>
+          <th>Family</th>
+          <th class="w-32"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-s>
+        <tr>
+          <td class="font-semibold text-forest">{{ s.speciesId }}</td>
+          <td>{{ s.commonName }}</td>
+          <td class="italic text-stone-500">{{ s.scientificName }}</td>
+          <td>{{ s.family ?? '—' }}</td>
+          <td class="text-right">
+            <button
+              pButton
+              icon="pi pi-pencil"
+              severity="secondary"
+              [rounded]="true"
+              [text]="true"
+              (click)="openEdit(s)"
+              title="Edit"
+            ></button>
+            <button
+              pButton
+              icon="pi pi-trash"
+              severity="danger"
+              [rounded]="true"
+              [text]="true"
+              (click)="remove(s)"
+              title="Delete"
+            ></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="5" class="text-center py-8 text-stone-400">No species found</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-dialog
+  [header]="dialogMode === 'create' ? 'Add species' : 'Edit species'"
+  [(visible)]="showDialog"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: 'min(720px, 95vw)' }"
+  (onHide)="closeDialog()"
+>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm font-medium text-stone-600 mb-1">Species ID *</label>
+      <input pInputText [(ngModel)]="form.speciesId" class="w-full" placeholder="e.g. SPEC-011" [disabled]="dialogMode==='edit'" />
+      @if (dialogMode === 'edit') {
+        <p class="text-xs text-stone-500 mt-1">Species ID can’t be changed.</p>
+      }
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-stone-600 mb-1">Common name *</label>
+      <input pInputText [(ngModel)]="form.commonName" class="w-full" placeholder="e.g. Bodhi Tree" />
+    </div>
+    <div class="md:col-span-2">
+      <label class="block text-sm font-medium text-stone-600 mb-1">Scientific name *</label>
+      <input pInputText [(ngModel)]="form.scientificName" class="w-full" placeholder="e.g. Ficus religiosa" />
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-stone-600 mb-1">Family</label>
+      <input pInputText [(ngModel)]="form.family" class="w-full" placeholder="e.g. Moraceae" />
+    </div>
+    <div class="md:col-span-2">
+      <label class="block text-sm font-medium text-stone-600 mb-1">Description</label>
+      <textarea pInputTextarea [(ngModel)]="form.description" [rows]="3" class="w-full" placeholder="Optional notes..."></textarea>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2">
+      <p-button label="Cancel" severity="secondary" [outlined]="true" [disabled]="saving" (onClick)="closeDialog()" />
+      <p-button label="Save" icon="pi pi-check" [loading]="saving" (onClick)="save()" />
+    </div>
+  </ng-template>
+</p-dialog>
+

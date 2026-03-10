@@ -170,8 +170,11 @@ export class TreeDetailComponent implements OnInit {
   apiUrl(path: string): string {
     if (!path) return '';
     if (/^https?:\/\//i.test(path)) return path;
-    const base = environment.apiBaseUrl.replace(/\/$/, '');
+    let base = environment.apiBaseUrl.replace(/\/$/, '');
     const cleaned = path.startsWith('/') ? path : `/${path}`;
+    if (cleaned.startsWith('/uploads') && base.endsWith('/api')) {
+      base = base.replace(/\/api$/, '');
+    }
     return `${base}${cleaned}`;
   }
 

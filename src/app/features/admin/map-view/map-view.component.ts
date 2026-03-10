@@ -13,6 +13,7 @@ import { ButtonModule } from 'primeng/button';
 import { OverlayPanelModule, OverlayPanel } from 'primeng/overlaypanel';
 import * as L from 'leaflet';
 import 'leaflet.markercluster';
+import { sarpangTmToWgs84 } from '../../../core/utils/crs';
 import { TreeService } from '../../trees/services/tree.service';
 import { Tree } from '../../../core/models/tree.model';
 import { SparklineComponent } from '../../../shared/components/sparkline/sparkline.component';
@@ -200,7 +201,8 @@ export class MapViewComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     trees.forEach((tree) => {
-      const marker = L.marker([tree.yCoordinate, tree.xCoordinate], {
+      const { lat, lng } = sarpangTmToWgs84(Number(tree.xCoordinate), Number(tree.yCoordinate));
+      const marker = L.marker([lat, lng], {
         icon: leafIcon,
       });
 
@@ -227,7 +229,10 @@ export class MapViewComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (trees.length > 0) {
       const bounds = L.latLngBounds(
-        trees.map((t) => [t.yCoordinate, t.xCoordinate] as L.LatLngTuple),
+        trees.map((t) => {
+          const { lat, lng } = sarpangTmToWgs84(Number(t.xCoordinate), Number(t.yCoordinate));
+          return [lat, lng] as L.LatLngTuple;
+        }),
       );
       this.map.fitBounds(bounds, { padding: [50, 50] });
     }

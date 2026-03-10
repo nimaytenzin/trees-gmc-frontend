@@ -17,6 +17,7 @@ import { Tree } from '../../core/models/tree.model';
 import { GrowthMetric } from '../../core/models/growth-metric.model';
 import * as L from 'leaflet';
 import 'leaflet.markercluster';
+import { sarpangTmToWgs84 } from '../../core/utils/crs';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -226,7 +227,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.markersLayer = L.layerGroup();
     this.markersByTreeId.clear();
     trees.forEach((tree) => {
-      const marker = L.marker([+tree.yCoordinate, +tree.xCoordinate], {
+      const { lat, lng } = sarpangTmToWgs84(Number(tree.xCoordinate), Number(tree.yCoordinate));
+      const marker = L.marker([lat, lng], {
         icon: this.buildTreeIcon(this.selectedTreeMapId === tree.id),
       });
       marker.on('click', (e) => {
@@ -239,7 +241,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.map.addLayer(this.markersLayer);
     if (trees.length > 0) {
       const bounds = L.latLngBounds(
-        trees.map((t) => [t.yCoordinate, t.xCoordinate] as L.LatLngTuple),
+        trees.map((t) => {
+          const { lat, lng } = sarpangTmToWgs84(Number(t.xCoordinate), Number(t.yCoordinate));
+          return [lat, lng] as L.LatLngTuple;
+        }),
       );
       this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }

@@ -99,12 +99,26 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
               </p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-600 mb-1">Longitude (X) *</label>
-              <p-inputNumber formControlName="xCoordinate" [minFractionDigits]="6" [maxFractionDigits]="8" mode="decimal" class="w-full" inputStyleClass="w-full" />
+              <label class="block text-sm font-medium text-stone-600 mb-1">X coordinate (Easting, m) *</label>
+              <p-inputNumber
+                formControlName="xCoordinate"
+                [minFractionDigits]="6"
+                [maxFractionDigits]="6"
+                mode="decimal"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-600 mb-1">Latitude (Y) *</label>
-              <p-inputNumber formControlName="yCoordinate" [minFractionDigits]="6" [maxFractionDigits]="8" mode="decimal" class="w-full" inputStyleClass="w-full" />
+              <label class="block text-sm font-medium text-stone-600 mb-1">Y coordinate (Northing, m) *</label>
+              <p-inputNumber
+                formControlName="yCoordinate"
+                [minFractionDigits]="6"
+                [maxFractionDigits]="6"
+                mode="decimal"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Elevation (Z, m)</label>
@@ -121,6 +135,10 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
               />
             </div>
           </div>
+          <p class="mt-2 text-xs text-stone-500">
+            Coordinate Reference System (CRS): EPSG:5304 – DRUKREF 03 / Sarpang TM. Please enter X (easting) and Y (northing) in meters
+            from your survey device.
+          </p>
         </p-card>
 
         <!-- Initial Growth Metrics -->

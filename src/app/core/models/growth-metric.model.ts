@@ -12,8 +12,8 @@ export interface GrowthMetric {
   remarks?: string;
   recordedAt: string;
   treeId: string;
-  existingForm?: 'Good' | 'Fair' | 'Poor';
-  healthCondition?: 'Good' | 'Fair' | 'Poor';
+  existingForm?: 'Good' | 'Fair' | 'Poor' | 'Dead';
+  healthCondition?: 'Good' | 'Fair' | 'Poor' | 'Dead';
   amenityValue?: 'High' | 'Medium' | 'Low';
   transplantSurvival?: 'High' | 'Medium' | 'Low';
   /** @deprecated Use healthCondition. Kept for backward compat. */

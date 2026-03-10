@@ -15,7 +15,7 @@ import { AuthService } from '../services/auth.service';
     >
       <!-- Logo -->
       <div class="p-4 border-b border-white/10 flex items-center gap-3">
-        <div class="w-10 h-10 bg-sage rounded-xl flex items-center justify-center text-xl flex-shrink-0">
+        <div class="w-10 h-10 bg-sage rounded-xl flex items-center justify-center text-xl shrink-0">
           🌳
         </div>
         @if (!collapsed) {
@@ -53,6 +53,14 @@ import { AuthService } from '../services/auth.service';
             <i class="pi pi-users"></i>
             @if (!collapsed) { <span>Enumerator Management</span> }
           </a>
+          <a
+            routerLink="/app/dashboard/survey-areas"
+            routerLinkActive="bg-white/15"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <i class="pi pi-map"></i>
+            @if (!collapsed) { <span>Survey Areas</span> }
+          </a>
         }
         <a
           routerLink="/app/trees/register"
@@ -73,14 +81,42 @@ import { AuthService } from '../services/auth.service';
       </nav>
 
       <!-- Collapse button -->
-      <div class="p-3 border-t border-white/10 hidden lg:block">
-        <button
-          (click)="toggle.emit()"
-          class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
-        >
-          <i class="pi" [class.pi-angle-left]="!collapsed" [class.pi-angle-right]="collapsed"></i>
-          @if (!collapsed) { <span class="text-sm">Collapse</span> }
-        </button>
+      <div class="mt-auto">
+        <div class="p-3 border-t border-white/10 hidden lg:block">
+          <button
+            (click)="toggle.emit()"
+            class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <i class="pi" [class.pi-angle-left]="!collapsed" [class.pi-angle-right]="collapsed"></i>
+            @if (!collapsed) { <span class="text-sm">Collapse</span> }
+          </button>
+        </div>
+
+        <div class="px-3 pb-3">
+          @if (!collapsed) {
+            <div class="text-[11px] text-white/70">
+              Developed by
+              <a
+                href="https://nimaytenzin.github.io/"
+                target="_blank"
+                rel="noopener"
+                class="text-white/85 hover:text-white underline decoration-white/30 underline-offset-4"
+              >
+                nimaytenzin.github.io
+              </a>
+            </div>
+          } @else {
+            <a
+              href="https://nimaytenzin.github.io/"
+              target="_blank"
+              rel="noopener"
+              class="block text-center text-white/75 hover:text-white transition-colors"
+              title="Developed by nimaytenzin.github.io"
+            >
+              <i class="pi pi-link text-xs"></i>
+            </a>
+          }
+        </div>
       </div>
     </aside>
   `,

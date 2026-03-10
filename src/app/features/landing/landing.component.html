@@ -1,4 +1,4 @@
-<div class="relative flex h-[100dvh] w-full flex-col bg-background-light font-display overflow-hidden">
+<div class="relative flex h-dvh w-full flex-col bg-background-light font-display overflow-hidden">
     <div class="layout-container flex flex-1 min-h-0 flex-col">
       <!-- Header: fixed height, rest is for main -->
       <header
@@ -13,7 +13,7 @@
           </a>
           <nav class="hidden lg:flex items-center gap-8">
             <button (click)="scrollToMap()" class="text-slate-700 text-sm font-medium hover:text-primary transition-colors cursor-pointer bg-transparent border-none">Map View</button>
-            <button (click)="navigateToRegistry()" class="text-slate-700 text-sm font-medium hover:text-primary transition-colors cursor-pointer bg-transparent border-none">Registry</button>
+            <a routerLink="/registry" class="text-slate-700 text-sm font-medium hover:text-primary transition-colors cursor-pointer no-underline">Registry</a>
             <a href="https://en.wikipedia.org/wiki/Gelephu_Mindfulness_City" target="_blank" rel="noopener" class="text-slate-700 text-sm font-medium hover:text-primary transition-colors no-underline">About GMC</a>
             <button (click)="scrollToSidebar()" class="text-slate-700 text-sm font-medium hover:text-primary transition-colors cursor-pointer bg-transparent border-none">Sustainability</button>
           </nav>
@@ -82,38 +82,84 @@
               </div>
 
               <!-- 3. Latest growth metrics -->
-              @if (latestMetric) {
+              <!-- 3. Assessments (all metrics) -->
+              @if (selectedTree.growthMetrics?.length) {
                 <div class="px-5 py-4 border-b border-slate-100">
-                  <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Latest growth record</p>
-                  <div class="flex items-center gap-2 mb-2">
-                    @if (displayCondition) {
-                      <p-tag [value]="displayCondition" [severity]="displayCondition === 'Good' ? 'success' : displayCondition === 'Dead' ? 'secondary' : 'warn'" styleClass="text-[10px]" />
-                    }
-                    @if (latestMetric.assessmentType) {
-                      <span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ latestMetric.assessmentType }} assessment</span>
-                    }
-                  </div>
-                  <p class="text-xs text-slate-500">Recorded: {{ latestMetric.recordedAt | date:'mediumDate' }}</p>
-                  <div class="mt-3 flex flex-wrap gap-4">
+                  <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Assessments</p>
 
-                    <div class="flex items-center gap-4 flex-wrap">
-                    <span class="flex items-center gap-1.5 text-sm">
-                      <img [src]="iconPath('treeHeight.png')" alt="" class="size-5 object-contain" />
-                      <span class="text-slate-500">Height</span> <strong class="text-slate-900">{{ latestMetric.heightM }} m</strong>
-                    </span>
-                    <span class="flex items-center gap-1.5 text-sm">
-                      <img [src]="iconPath('treeDbh.png')" alt="" class="size-5 object-contain" />
-                      <span class="text-slate-500">DBH</span> <strong class="text-slate-900">{{ latestMetric.dbhCm }} cm</strong>
-                    </span>
-                    <span class="flex items-center gap-1.5 text-sm">
-                      <img [src]="iconPath('treeCanopy.png')" alt="" class="size-5 object-contain" />
-                      <span class="text-slate-500">Canopy</span> <strong class="text-slate-900">{{ latestMetric.canopySpreadM }} m</strong>
-                    </span>
-                  </div>
-                  </div>
-                  @if (latestMetric.remarks) {
-                    <p class="text-xs text-slate-600 mt-2">{{ latestMetric.remarks }}</p>
-                  }
+                  <p-accordion [activeIndex]="0">
+                    @for (metric of selectedTree.growthMetrics; track metric.id) {
+                      <p-accordionTab>
+                        <ng-template pTemplate="header">
+                          <div class="flex items-center justify-between w-full gap-3">
+                            <div class="flex items-center gap-2 min-w-0">
+                              <span class="text-sm font-semibold text-slate-800 truncate">
+                                {{ metric.recordedAt | date:'mediumDate' }}
+                              </span>
+                              @if (metric.assessmentType) {
+                                <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">
+                                  {{ metric.assessmentType }}
+                                </span>
+                              }
+                            </div>
+                            @if (metric.healthCondition ?? metric.condition) {
+                              @let cond = (metric.healthCondition ?? metric.condition);
+                              <p-tag
+                                [value]="cond"
+                                [severity]="cond === 'Good' ? 'success' : cond === 'Dead' ? 'secondary' : 'warn'"
+                                styleClass="text-[10px] shrink-0"
+                              />
+                            }
+                          </div>
+                        </ng-template>
+
+                        <div class="grid grid-cols-1 gap-3">
+                          <div class="flex items-center gap-4 flex-wrap">
+                            <span class="flex items-center gap-1.5 text-sm">
+                              <img [src]="iconPath('treeHeight.png')" alt="" class="size-5 object-contain" />
+                              <span class="text-slate-500">Height</span> <strong class="text-slate-900">{{ metric.heightM }} m</strong>
+                            </span>
+                            <span class="flex items-center gap-1.5 text-sm">
+                              <img [src]="iconPath('treeDbh.png')" alt="" class="size-5 object-contain" />
+                              <span class="text-slate-500">DBH</span> <strong class="text-slate-900">{{ metric.dbhCm }} cm</strong>
+                            </span>
+                            <span class="flex items-center gap-1.5 text-sm">
+                              <img [src]="iconPath('treeCanopy.png')" alt="" class="size-5 object-contain" />
+                              <span class="text-slate-500">Canopy</span> <strong class="text-slate-900">{{ metric.canopySpreadM }} m</strong>
+                            </span>
+                          </div>
+
+                          @if (metric.remarks) {
+                            <p class="text-xs text-slate-600 leading-relaxed">{{ metric.remarks }}</p>
+                          }
+
+                          @if (metric.photos?.length) {
+                            @let photos = (metric.photos ?? []);
+                            <button
+                              type="button"
+                              class="text-left text-xs font-semibold text-primary hover:underline bg-transparent border-0 cursor-pointer p-0"
+                              (click)="openMetricsGallery(photos)"
+                            >
+                              View photos ({{ photos.length }})
+                            </button>
+
+                            <div class="grid grid-cols-3 gap-2 mt-1">
+                              @for (photo of photos.slice(0, 6); track photo.id) {
+                                <div
+                                  class="aspect-square rounded-lg bg-slate-100 bg-cover bg-center cursor-pointer"
+                                  [style.background-image]="'url(' + photo.url + ')'"
+                                  (click)="openMetricsGallery(photos)"
+                                  title="Open gallery"
+                                ></div>
+                              }
+                            </div>
+                          } @else {
+                            <p class="text-xs text-slate-400">No images in this assessment.</p>
+                          }
+                        </div>
+                      </p-accordionTab>
+                    }
+                  </p-accordion>
                 </div>
               }
 
@@ -171,7 +217,7 @@
             </button>
           </div>
 
-          <!-- Info Overlay (PrimeNG Card) -->
+          <!-- Info Overlay (PrimeNG Card) - FILTERS -->
           <div class="absolute top-6 left-6 max-w-sm hidden md:block z-1000">
             <p-card styleClass="bg-white/95 shadow-2xl border border-white/20">
               <h1 class="text-2xl font-bold tracking-tight text-slate-900 mb-2">
@@ -180,7 +226,7 @@
               <p class="text-slate-600 text-sm leading-relaxed mb-3">
                 GMC is a living ecosystem where every tree is a guardian of peace. Switch the map layer (Positron / Satellite) and click the Tree markers to explore.
               </p>
-             
+
               <div class="flex items-center gap-4 flex-wrap">
                 <div class="flex flex-col">
                   <span class="text-2xl font-bold text-primary">{{ totalTrees | number }}</span>
@@ -199,12 +245,95 @@
                   </div>
                 }
               </div>
+
+              <!-- FILTERS -->
+
+              <div class="flex items-center mt-7 justify-between ">
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Filters</div>
+                <p-button icon="pi pi-filter-slash" label="Clear" severity="secondary" size="small" [outlined]="true" (onClick)="clearMapFilters()" />
+              </div>
+
+              <div class="flex flex-col gap-3">
+                <div>
+                  <label class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Species</label>
+                  <p-dropdown
+                    [(ngModel)]="selectedSpeciesId"
+                    [options]="speciesOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="All species"
+                    [showClear]="true"
+                    styleClass="w-full mt-1"
+                    (onChange)="loadMapTrees()"
+                  />
+                </div>
+
+                <details class="rounded-lg border border-slate-200 bg-white/60">
+                  <summary class="cursor-pointer select-none list-none px-3 py-2 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <i class="pi pi-sliders-h text-slate-500 text-sm"></i>
+                      <span class="text-sm font-semibold text-slate-700">Measurements</span>
+                      <span class="text-xs text-slate-400">(Height, DBH, Canopy)</span>
+                    </div>
+                    <i class="pi pi-chevron-down text-slate-500 text-xs"></i>
+                  </summary>
+
+                  <div class="px-3 pb-3 pt-1 grid grid-cols-1 gap-2">
+                    <div class="grid grid-cols-12 items-center gap-2 border border-transparent rounded-md px-1 py-0.5">
+                      <span class="text-sm text-slate-600 col-span-3">Height</span>
+                      <p-dropdown
+                        [(ngModel)]="heightOp"
+                        [options]="numericOpOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="="
+                        [showClear]="false"
+                        styleClass="w-full col-span-3"
+                        (onChange)="loadMapTrees()"
+                      />
+                      <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="heightValue" (input)="onMapFilterInput()" />
+                    </div>
+
+                    <div class="grid grid-cols-12 items-center gap-2 border border-transparent rounded-md px-1 py-0.5">
+                      <span class="text-sm text-slate-600 col-span-3">DBH</span>
+                      <p-dropdown
+                        [(ngModel)]="dbhOp"
+                        [options]="numericOpOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="="
+                        [showClear]="false"
+                        styleClass="w-full col-span-3"
+                        (onChange)="loadMapTrees()"
+                      />
+                      <input pInputText type="number" class="w-full col-span-6" placeholder="cm" [(ngModel)]="dbhValue" (input)="onMapFilterInput()" />
+                    </div>
+
+                    <div class="grid grid-cols-12 items-center gap-2 border border-transparent rounded-md px-1 py-0.5">
+                      <span class="text-sm text-slate-600 col-span-3">Canopy</span>
+                      <p-dropdown
+                        [(ngModel)]="canopyOp"
+                        [options]="numericOpOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="="
+                        [showClear]="false"
+                        styleClass="w-full col-span-3"
+                        (onChange)="loadMapTrees()"
+                      />
+                      <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="canopyValue" (input)="onMapFilterInput()" />
+                    </div>
+                  </div>
+                </details>
+              </div>
             </p-card>
           </div>
 
+         
+
           <!-- Search Results Overlay (PrimeNG Card) -->
           @if (searchResults.length > 0) {
-            <div class="absolute top-6 right-6 max-w-xs w-72 max-h-80 overflow-hidden z-[1000]">
+            <div class="absolute top-6 right-6 max-w-xs w-72 max-h-80 overflow-hidden z-1000">
               <p-card styleClass="overflow-hidden">
                 <div class="flex items-center justify-between mb-3">
                   <span class="text-sm font-bold text-slate-700">{{ searchResults.length }} results</span>
@@ -216,7 +345,7 @@
                       (click)="selectTree(result); searchResults = []"
                       class="w-full text-left p-3 hover:bg-slate-50 rounded-lg transition-colors flex items-center gap-3 border-0 bg-transparent cursor-pointer"
                     >
-                      <div class="size-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div class="size-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
                         <i class="pi pi-map-marker text-primary text-sm"></i>
                       </div>
                       <div>
@@ -233,3 +362,21 @@
       </main>
     </div>
   </div>
+
+  <!-- Fullscreen gallery for metric photos -->
+  @if (metricsGalleryVisible && metricsGalleryImages.length) {
+    <p-galleria
+      [value]="metricsGalleryImages"
+      [(visible)]="metricsGalleryVisible"
+      [fullScreen]="true"
+      [numVisible]="6"
+      [circular]="true"
+    >
+      <ng-template pTemplate="item" let-item>
+        <img [src]="item.url" class="max-h-[80vh] object-contain" />
+      </ng-template>
+      <ng-template pTemplate="thumbnail" let-item>
+        <img [src]="item.url" class="w-16 h-16 object-cover rounded" />
+      </ng-template>
+    </p-galleria>
+  }

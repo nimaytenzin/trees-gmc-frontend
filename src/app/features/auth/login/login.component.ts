@@ -1,154 +1,148 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
-import { CheckboxModule } from 'primeng/checkbox'; // Added for UX
+import { CheckboxModule } from 'primeng/checkbox';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule,
-    RouterModule,
-    ReactiveFormsModule,
-    InputTextModule,
-    PasswordModule,
-    ButtonModule,
-    MessageModule,
-    CheckboxModule
+    CommonModule, RouterModule, ReactiveFormsModule,
+    InputTextModule, PasswordModule, ButtonModule,
+    MessageModule, CheckboxModule
   ],
   template: `
-    <div class="min-h-dvh bg-background-light font-display">
-      <header class="border-b border-slate-200 bg-white/80 backdrop-blur-md">
-        <div class="mx-auto max-w-6xl px-6 md:px-10 py-4 flex items-center justify-between">
-          <a routerLink="/" class="flex items-center gap-3 text-slate-900 no-underline">
-            <div class="size-8 text-primary">
-              <span class="material-symbols-outlined text-4xl">eco</span>
+    <div class="min-h-dvh bg-background-light font-display flex flex-col">
+      <header class="fixed top-0 w-full z-50 bg-white/60 backdrop-blur-xl border-b border-slate-100">
+        <div class="mx-auto max-w-7xl px-8 py-4 flex items-center justify-between">
+          <a routerLink="/" class="flex items-center gap-3 no-underline group">
+            <div class="size-10 bg-primary rounded-xl flex items-center justify-center transition-transform group-hover:rotate-6">
+              <span class="material-symbols-outlined text-white">eco</span>
             </div>
-            <div class="leading-tight">
-              <div class="text-lg font-bold tracking-tight">Trees-GMC</div>
-              <div class="text-xs text-slate-500 -mt-0.5">Gelephu Mindfulness City</div>
+            <div class="hidden sm:block">
+              <div class="text-sm font-black uppercase tracking-tighter text-slate-900">Trees-GMC</div>
+              <div class="text-[10px] text-slate-400 font-medium">Gelephu Mindfulness City</div>
             </div>
           </a>
-          <a routerLink="/" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors no-underline">
-            Back to map
+          <a routerLink="/" class="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-primary transition-all">
+            ← Back to Map
           </a>
         </div>
       </header>
 
-      <main class="mx-auto max-w-6xl px-6 md:px-10 py-10 md:py-14">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-          <div class="hidden lg:block">
-            <div class="rounded-2xl overflow-hidden border border-slate-200 shadow-2xl bg-white">
-              <div class="aspect-4/5 bg-slate-100">
-                <img
-                  src="/assets/hero1.jpg"
-                  alt="Community tree-watering moment"
-                  class="h-full w-full object-cover"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div class="p-5">
-                <p class="text-sm font-semibold text-slate-800">
-                  Caring for new life, together.
-                </p>
-                <p class="mt-1 text-xs text-slate-500 leading-relaxed">
-                  Source:His Majesty King Jigme Khesar Facebook page —
-                  <a
-                    href="https://www.facebook.com/share/1MfJfgWLsM/"
-                    target="_blank"
-                    rel="noopener"
-                    class="text-primary hover:opacity-90 no-underline font-medium"
-                  >
-                    view post
-                  </a>
-                </p>
-              </div>
+      <main class="flex-grow flex flex-col lg:flex-row pt-20">
+        <div class="hidden lg:block lg:w-1/2 relative overflow-hidden">
+          <img
+            src="/assets/hero1.jpg"
+            alt="Community tree-watering"
+            class="absolute inset-0 h-full w-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-1000"
+          />
+          <div class="absolute inset-0 bg-primary/20 mix-blend-multiply"></div>
+          
+          <div class="absolute bottom-12 left-12 right-12 text-white p-8 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10">
+            <p class="text-sm font-light leading-relaxed mb-4">
+              "Nurturing the environment is the cornerstone of the Mindfulness City vision, ensuring a harmonious balance between progress and nature."
+            </p>
+            <div class="flex items-center gap-2 opacity-80">
+              <span class="material-symbols-outlined text-sm">location_on</span>
+              <span class="text-[10px] uppercase tracking-widest font-bold">Bhutan Forestry Initiative</span>
             </div>
           </div>
+        </div>
 
-          <div class="w-full max-w-md lg:justify-self-end animate-fade-in">
-            <div class="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200 shadow-2xl p-8 md:p-10">
-          <div class="mb-8">
-            <h2 class="text-2xl font-bold text-slate-800">Welcome back</h2>
-            <p class="text-slate-500 text-sm mt-1">Please enter your details to sign in.</p>
-          </div>
+        <div class="flex-grow flex items-center justify-center p-8 lg:p-16 bg-white">
+          <div class="w-full max-w-md animate-fade-in-up">
+            
+            <div class="mb-10">
+              <span class="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest mb-4">
+                Internal Access Only
+              </span>
+              <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight">Portal Login</h2>
+              <p class="text-slate-500 mt-2">Manage and monitor the urban forest ecosystem.</p>
+            </div>
 
-          @if (error) {
-            <p-message severity="error" [text]="error" styleClass="mb-6 w-full" />
-          }
+            @if (error) {
+              <div class="p-4 rounded-xl bg-red-50 text-red-600 text-xs font-semibold mb-6 border border-red-100 flex items-center gap-3">
+                <span class="material-symbols-outlined text-base">warning</span>
+                {{error}}
+              </div>
+            }
 
-          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-5">
-            <div class="flex flex-col gap-2">
-              <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">Email Address</label>
-              <span class="p-input-icon-left w-full">
-                <i class="pi pi-envelope text-slate-400"></i>
+            <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-6">
+              <div class="flex flex-col gap-2">
+                <label class="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400 ml-1">Work Email</label>
                 <input
                   pInputText
                   formControlName="email"
                   type="email"
-                  class="w-full py-3 border-slate-200 focus:border-primary transition-all rounded-xl"
-                  [class.ng-dirty]="form.get('email')?.touched"
-                  placeholder="name@company.com"
+                  class="w-full px-4 py-4 border-slate-200 focus:border-primary transition-all rounded-2xl bg-slate-50/50 outline-none"
+                  placeholder="name@gmc.bt"
                 />
-              </span>
-            </div>
-
-            <div class="flex flex-col gap-2">
-              <div class="flex justify-between items-center">
-                <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">Password</label>
-                <a href="#" class="text-xs font-semibold text-primary hover:opacity-90">Forgot?</a>
               </div>
-              <p-password
-                formControlName="password"
-                [feedback]="false"
-                [toggleMask]="true"
-                styleClass="w-full"
-                inputStyleClass="w-full py-3 border-slate-200 focus:border-primary rounded-xl"
-                placeholder="••••••••"
-              />
-            </div>
 
-            <div class="flex items-center gap-2 mb-2">
-              <p-checkbox [binary]="true" inputId="remember" />
-              <label for="remember" class="text-sm text-slate-600 cursor-pointer">Stay signed in for 30 days</label>
-            </div>
+              <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-center px-1">
+                  <label class="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">Security Key</label>
+                  <a href="#" class="text-[11px] font-bold text-primary uppercase tracking-widest hover:underline">Forgot?</a>
+                </div>
+                <p-password
+                  formControlName="password"
+                  [feedback]="false"
+                  [toggleMask]="true"
+                  styleClass="w-full"
+                  inputStyleClass="w-full px-4 py-4 border-slate-200 focus:border-primary rounded-2xl bg-slate-50/50"
+                  placeholder="••••••••"
+                />
+              </div>
 
-            <p-button
-              type="submit"
-              label="Sign In to Dashboard"
-              [loading]="loading"
-              [disabled]="form.invalid"
-              styleClass="w-full py-3.5 mt-2 bg-primary hover:bg-primary/90 border-none rounded-xl font-bold shadow-lg shadow-primary/20"
-            />
-          </form>
-          
-          <div class="mt-8 text-center">
-            <p class="text-sm text-slate-500 italic font-light">"Nurturing Nature, Building the Future"</p>
+              <div class="flex items-center justify-between mt-2">
+                <div class="flex items-center gap-3">
+                  <p-checkbox [binary]="true" inputId="remember" />
+                  <label for="remember" class="text-xs text-slate-500 font-medium cursor-pointer">Trust this browser</label>
+                </div>
+                <span class="text-[10px] font-bold text-slate-300 uppercase">Ver 1.0.4</span>
+              </div>
+
+              <button
+                type="submit"
+                [disabled]="form.invalid || loading"
+                class="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-primary/30 transition-all hover:translate-y-[-2px] active:translate-y-[0px] disabled:opacity-50 disabled:translate-y-0"
+              >
+                {{ loading ? 'Authenticating...' : 'Enter Dashboard' }}
+              </button>
+            </form>
+
+            
           </div>
         </div>
-      </div>
-    </div>
       </main>
+    </div>
   `,
   styles: [`
     :host ::ng-deep {
       .p-inputtext:enabled:focus {
-        box-shadow: 0 0 0 2px rgba(0, 86, 62, 0.18);
+        box-shadow: 0 10px 20px -5px rgba(0, 86, 62, 0.15);
+      }
+      .p-checkbox .p-checkbox-box {
+        border-radius: 6px;
+        border-color: #e2e8f0;
+      }
+      .p-checkbox .p-checkbox-box.p-highlight {
+        background: var(--primary, #00563e);
+        border-color: var(--primary, #00563e);
       }
     }
-    .animate-fade-in {
-      animation: fadeIn 0.6s ease-out;
+    .animate-fade-in-up {
+      animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
     }
   `]

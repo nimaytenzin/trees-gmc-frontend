@@ -45,7 +45,9 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
               {{ tree.treeId }}
             </span>
             @if (tree.growthMetrics?.length) {
-              <!-- <app-condition-badge [condition]="tree.growthMetrics![0].condition" /> -->
+              <app-condition-badge
+                [condition]="tree.growthMetrics?.[0]?.healthCondition ?? tree.growthMetrics?.[0]?.condition ?? ''"
+              />
             }
           </div>
         </div>
@@ -107,7 +109,9 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
                 <td>{{ metric.heightM }}</td>
                 <td>{{ metric.dbhCm }}</td>
                 <td>{{ metric.canopySpreadM }}</td>
-                <td><app-condition-badge [condition]="metric.condition" /></td>
+                <td>
+                  <app-condition-badge [condition]="metric.healthCondition ?? metric.condition ?? ''" />
+                </td>
                 <td>{{ metric.remarks || '-' }}</td>
                 <td>
                   @if (metric.photos?.length) {

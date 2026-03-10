@@ -81,8 +81,24 @@ import { Tree } from '../../../core/models/tree.model';
               <p-inputNumber formControlName="canopySpreadM" [minFractionDigits]="1" [maxFractionDigits]="2" mode="decimal" suffix=" m" class="w-full" inputStyleClass="w-full" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-600 mb-1">Condition *</label>
-              <p-dropdown formControlName="condition" [options]="conditions" placeholder="Select condition" styleClass="w-full" />
+              <label class="block text-sm font-medium text-stone-600 mb-1">Health Condition *</label>
+              <p-dropdown formControlName="healthCondition" [options]="conditions" placeholder="Select condition" styleClass="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-600 mb-1">Assessment Type</label>
+              <p-dropdown formControlName="assessmentType" [options]="assessmentTypes" placeholder="Auto" [showClear]="true" styleClass="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-600 mb-1">Existing Form</label>
+              <p-dropdown formControlName="existingForm" [options]="conditions" placeholder="Optional" [showClear]="true" styleClass="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-600 mb-1">Amenity Value</label>
+              <p-dropdown formControlName="amenityValue" [options]="amenityValues" placeholder="Optional" [showClear]="true" styleClass="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-600 mb-1">Transplant Survival</label>
+              <p-dropdown formControlName="transplantSurvival" [options]="transplantSurvivalOptions" placeholder="Optional" [showClear]="true" styleClass="w-full" />
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Recorded At</label>
@@ -141,6 +157,23 @@ export class GrowthMetricFormComponent implements OnInit {
     { label: 'Dead', value: 'Dead' },
   ];
 
+  amenityValues = [
+    { label: 'High', value: 'High' },
+    { label: 'Medium', value: 'Medium' },
+    { label: 'Low', value: 'Low' },
+  ];
+
+  transplantSurvivalOptions = [
+    { label: 'High', value: 'High' },
+    { label: 'Medium', value: 'Medium' },
+    { label: 'Low', value: 'Low' },
+  ];
+
+  assessmentTypes = [
+    { label: 'Initial', value: 'Initial' },
+    { label: 'Periodic', value: 'Periodic' },
+  ];
+
   trees: (Tree & { displayLabel: string })[] = [];
   filteredTrees: (Tree & { displayLabel: string })[] = [];
   selectedFiles: File[] = [];
@@ -157,7 +190,11 @@ export class GrowthMetricFormComponent implements OnInit {
       heightM: [null as number | null, Validators.required],
       dbhCm: [null as number | null, Validators.required],
       canopySpreadM: [null as number | null, Validators.required],
-      condition: ['', Validators.required],
+      assessmentType: ['' as string],
+      existingForm: ['' as string],
+      healthCondition: ['', Validators.required],
+      amenityValue: ['' as string],
+      transplantSurvival: ['' as string],
       remarks: [''],
       recordedAt: [new Date()],
     });
@@ -206,7 +243,11 @@ export class GrowthMetricFormComponent implements OnInit {
       heightM: this.form.value.heightM,
       dbhCm: this.form.value.dbhCm,
       canopySpreadM: this.form.value.canopySpreadM,
-      condition: this.form.value.condition,
+      assessmentType: this.form.value.assessmentType || undefined,
+      existingForm: this.form.value.existingForm || undefined,
+      healthCondition: this.form.value.healthCondition || undefined,
+      amenityValue: this.form.value.amenityValue || undefined,
+      transplantSurvival: this.form.value.transplantSurvival || undefined,
       remarks: this.form.value.remarks,
       recordedAt: this.form.value.recordedAt?.toISOString(),
     };

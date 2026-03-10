@@ -11,6 +11,14 @@ export const ADMIN_ROUTES: Routes = [
       ),
   },
   {
+    path: 'survey-areas',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+      import('./survey-areas/survey-areas.component').then(
+        (m) => m.SurveyAreasComponent,
+      ),
+  },
+  {
     path: 'users',
     canActivate: [adminGuard],
     loadComponent: () =>

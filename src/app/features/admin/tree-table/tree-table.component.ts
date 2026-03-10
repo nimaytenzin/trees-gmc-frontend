@@ -8,7 +8,8 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TreeService } from '../../trees/services/tree.service';
-import { Tree, PaginatedTrees } from '../../../core/models/tree.model';
+import { Tree } from '../../../core/models/tree.model';
+import { Species } from '../../../core/models/species.model';
 import { ConditionBadgeComponent } from '../../../shared/components/condition-badge/condition-badge.component';
 
 @Component({
@@ -28,8 +29,9 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
   template: `
     <div class="bg-white rounded-xl border border-stone-200 overflow-hidden">
       <!-- Filters -->
-      <div class="p-4 border-b border-stone-100 flex flex-col md:flex-row gap-3">
-        <div class="flex-1">
+      <div class="p-4 border-b border-stone-100 flex flex-col gap-3">
+        <div class="flex flex-col md:flex-row gap-3">
+          <div class="flex-1">
           <span class="p-input-icon-left w-full">
             <i class="pi pi-search"></i>
             <input
@@ -40,16 +42,104 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
               class="w-full"
             />
           </span>
+          </div>
+
+          <p-dropdown
+            [(ngModel)]="selectedSpeciesId"
+            [options]="speciesOptions"
+            optionLabel="label"
+            optionValue="value"
+            (onChange)="loadTrees()"
+            placeholder="All Species"
+            [showClear]="true"
+            styleClass="w-full md:w-56"
+          />
+
+          <p-dropdown
+            [(ngModel)]="selectedCondition"
+            [options]="conditionOptions"
+            (onChange)="loadTrees()"
+            placeholder="All Conditions"
+            [showClear]="true"
+            styleClass="w-full md:w-48"
+          />
+
+          <div class="flex gap-2">
+            <p-button icon="pi pi-filter-slash" label="Clear" severity="secondary" [outlined]="true" (onClick)="clearFilters()" />
+            <p-button icon="pi pi-download" label="Export CSV" severity="secondary" [outlined]="true" (onClick)="exportCsv()" />
+          </div>
         </div>
-        <p-dropdown
-          [(ngModel)]="selectedCondition"
-          [options]="conditionOptions"
-          (onChange)="loadTrees()"
-          placeholder="All Conditions"
-          [showClear]="true"
-          styleClass="w-full md:w-48"
-        />
-        <p-button icon="pi pi-download" label="Export CSV" severity="secondary" [outlined]="true" (onClick)="exportCsv()" />
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- Height -->
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-stone-600 w-16">Height</span>
+            <p-dropdown
+              [(ngModel)]="heightOp"
+              [options]="numericOpOptions"
+              optionLabel="label"
+              optionValue="value"
+              (onChange)="loadTrees()"
+              placeholder="Op"
+              [showClear]="true"
+              styleClass="w-24"
+            />
+            <input
+              pInputText
+              type="number"
+              [(ngModel)]="heightValue"
+              (input)="onMetricFilterInput()"
+              placeholder="m"
+              class="w-full"
+            />
+          </div>
+
+          <!-- DBH -->
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-stone-600 w-16">DBH</span>
+            <p-dropdown
+              [(ngModel)]="dbhOp"
+              [options]="numericOpOptions"
+              optionLabel="label"
+              optionValue="value"
+              (onChange)="loadTrees()"
+              placeholder="Op"
+              [showClear]="true"
+              styleClass="w-24"
+            />
+            <input
+              pInputText
+              type="number"
+              [(ngModel)]="dbhValue"
+              (input)="onMetricFilterInput()"
+              placeholder="cm"
+              class="w-full"
+            />
+          </div>
+
+          <!-- Canopy -->
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-stone-600 w-16">Canopy</span>
+            <p-dropdown
+              [(ngModel)]="canopyOp"
+              [options]="numericOpOptions"
+              optionLabel="label"
+              optionValue="value"
+              (onChange)="loadTrees()"
+              placeholder="Op"
+              [showClear]="true"
+              styleClass="w-24"
+            />
+            <input
+              pInputText
+              type="number"
+              [(ngModel)]="canopyValue"
+              (input)="onMetricFilterInput()"
+              placeholder="m"
+              class="w-full"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Table -->
@@ -128,7 +218,10 @@ export class TreeTableComponent implements OnInit {
   loading = false;
   searchQuery = '';
   selectedCondition: string | null = null;
+  selectedSpeciesId: string | null = null;
+  speciesOptions: { label: string; value: string }[] = [];
   private searchTimeout: any;
+  private metricFilterTimeout: any;
 
   conditionOptions = [
     { label: 'Good', value: 'Good' },
@@ -137,15 +230,47 @@ export class TreeTableComponent implements OnInit {
     { label: 'Dead', value: 'Dead' },
   ];
 
+  numericOpOptions: { label: string; value: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' }[] = [
+    { label: '=', value: 'eq' },
+    { label: '>', value: 'gt' },
+    { label: '≥', value: 'gte' },
+    { label: '<', value: 'lt' },
+    { label: '≤', value: 'lte' },
+  ];
+
+  heightOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' | null = null;
+  heightValue: number | null = null;
+  dbhOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' | null = null;
+  dbhValue: number | null = null;
+  canopyOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' | null = null;
+  canopyValue: number | null = null;
+
   constructor(private treeService: TreeService) {}
 
   ngOnInit(): void {
+    this.treeService.getSpecies().subscribe({
+      next: (species: Species[]) => {
+        this.speciesOptions = species
+          .map((s) => ({
+            label: `${s.commonName} (${s.scientificName})`,
+            value: s.id,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      },
+      error: () => {},
+    });
+
     this.loadTrees();
   }
 
   onSearch(): void {
     clearTimeout(this.searchTimeout);
     this.searchTimeout = setTimeout(() => this.loadTrees(), 300);
+  }
+
+  onMetricFilterInput(): void {
+    clearTimeout(this.metricFilterTimeout);
+    this.metricFilterTimeout = setTimeout(() => this.loadTrees(), 300);
   }
 
   onLazyLoad(event: any): void {
@@ -159,6 +284,13 @@ export class TreeTableComponent implements OnInit {
       .getAll({
         search: this.searchQuery || undefined,
         healthCondition: this.selectedCondition || undefined,
+        speciesId: this.selectedSpeciesId || undefined,
+        heightOp: this.heightOp || undefined,
+        heightValue: this.heightValue ?? undefined,
+        dbhOp: this.dbhOp || undefined,
+        dbhValue: this.dbhValue ?? undefined,
+        canopyOp: this.canopyOp || undefined,
+        canopyValue: this.canopyValue ?? undefined,
         page,
         limit: this.pageSize,
       })
@@ -170,6 +302,19 @@ export class TreeTableComponent implements OnInit {
         },
         error: () => (this.loading = false),
       });
+  }
+
+  clearFilters(): void {
+    this.searchQuery = '';
+    this.selectedCondition = null;
+    this.selectedSpeciesId = null;
+    this.heightOp = null;
+    this.heightValue = null;
+    this.dbhOp = null;
+    this.dbhValue = null;
+    this.canopyOp = null;
+    this.canopyValue = null;
+    this.loadTrees(1);
   }
 
   exportCsv(): void {

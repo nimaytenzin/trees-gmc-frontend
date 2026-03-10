@@ -24,6 +24,10 @@ import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { TagModule } from 'primeng/tag';
 import { SparklineComponent } from '../../shared/components/sparkline/sparkline.component';
+import { DropdownModule } from 'primeng/dropdown';
+import { Species } from '../../core/models/species.model';
+import { AccordionModule } from 'primeng/accordion';
+import { GalleriaModule } from 'primeng/galleria';
 
 /** Primary theme colour for charts (no grids). */
 const CHART_PRIMARY = '#00563E';
@@ -41,7 +45,10 @@ const CHART_PRIMARY = '#00563E';
     InputGroupModule,
     InputGroupAddonModule,
     TagModule,
+    DropdownModule,
     SparklineComponent,
+    AccordionModule,
+    GalleriaModule,
   ],
   templateUrl: './landing.component.html',
 })
@@ -85,9 +92,29 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedTree: Tree | null = null;
   selectedTreePhoto: string | null = null;
   latestMetric: GrowthMetric | null = null;
+  metricsGalleryVisible = false;
+  metricsGalleryImages: any[] = [];
   isFavorited = false;
   isLoggedIn = false;
   currentLayer: 'positron' | 'satellite' = 'positron';
+
+  // --- Map filters (public) ---
+  selectedSpeciesId: string | null = null;
+  speciesOptions: { label: string; value: string }[] = [];
+  numericOpOptions: { label: string; value: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' }[] = [
+    { label: '=', value: 'eq' },
+    { label: '>', value: 'gt' },
+    { label: '≥', value: 'gte' },
+    { label: '<', value: 'lt' },
+    { label: '≤', value: 'lte' },
+  ];
+  heightOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' = 'eq';
+  heightValue: number | null = null;
+  dbhOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' = 'eq';
+  dbhValue: number | null = null;
+  canopyOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' = 'eq';
+  canopyValue: number | null = null;
+  private mapFilterTimeout: any;
 
   private map: L.Map | null = null;
   private positronLayer!: L.TileLayer;
@@ -106,6 +133,18 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.isLoggedIn = this.authService.isAuthenticated();
 
+    this.treeService.getPublicSpecies().subscribe({
+      next: (species: Species[]) => {
+        this.speciesOptions = species
+          .map((s) => ({
+            label: `${s.commonName} (${s.scientificName})`,
+            value: s.id,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      },
+      error: () => {},
+    });
+
     this.treeService.getPublicStatistics().subscribe({
       next: (stats) => {
         this.totalTrees = stats.total;
@@ -121,13 +160,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.initMap();
-    this.treeService.getPublicTreesForMap().subscribe({
-      next: (trees) => {
-        this.mapTrees = trees;
-        this.addMarkers(trees);
-      },
-      error: () => {},
-    });
+    this.loadMapTrees();
   }
 
   ngOnDestroy(): void {
@@ -188,6 +221,45 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  clearMapFilters(): void {
+    this.selectedSpeciesId = null;
+    this.heightOp = 'eq';
+    this.heightValue = null;
+    this.dbhOp = 'eq';
+    this.dbhValue = null;
+    this.canopyOp = 'eq';
+    this.canopyValue = null;
+    this.loadMapTrees();
+  }
+
+  onMapFilterInput(): void {
+    clearTimeout(this.mapFilterTimeout);
+    this.mapFilterTimeout = setTimeout(() => this.loadMapTrees(), 300);
+  }
+
+  loadMapTrees(): void {
+    this.closeSidebar();
+    this.treeService
+      .getPublicTrees({
+        speciesId: this.selectedSpeciesId || undefined,
+        heightOp: this.heightOp || undefined,
+        heightValue: this.heightValue ?? undefined,
+        dbhOp: this.dbhOp || undefined,
+        dbhValue: this.dbhValue ?? undefined,
+        canopyOp: this.canopyOp || undefined,
+        canopyValue: this.canopyValue ?? undefined,
+        page: 1,
+        limit: 10000,
+      })
+      .subscribe({
+        next: (res) => {
+          this.mapTrees = res.items;
+          this.addMarkers(res.items);
+        },
+        error: () => {},
+      });
+  }
+
   private buildTreeIcon(isSelected: boolean): L.DivIcon {
     return L.divIcon({
       className: `custom-tree-marker${isSelected ? ' is-selected' : ''}`,
@@ -231,24 +303,39 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedTree = null;
     this.selectedTreePhoto = null;
     this.latestMetric = null;
+    this.metricsGalleryVisible = false;
+    this.metricsGalleryImages = [];
     this.setSelectedMarker(null);
   }
 
   selectTree(tree: Tree): void {
-    this.selectedTree = tree;
+    // Fetch full tree (includes growthMetrics + photos)
     this.isFavorited = false;
-    this.latestMetric =
-      tree.growthMetrics && tree.growthMetrics.length > 0
-        ? tree.growthMetrics[0]
-        : null;
-
-    // Check for photo
-    this.selectedTreePhoto = null;
-    if (this.latestMetric?.photos && this.latestMetric.photos.length > 0) {
-      this.selectedTreePhoto = this.latestMetric.photos[0].url;
-    }
-
     this.setSelectedMarker(tree.id);
+    this.treeService.getPublicTree(tree.id).subscribe({
+      next: (full) => {
+        this.selectedTree = full;
+        this.latestMetric =
+          full.growthMetrics && full.growthMetrics.length > 0 ? full.growthMetrics[0] : null;
+
+        this.selectedTreePhoto = null;
+        if (this.latestMetric?.photos && this.latestMetric.photos.length > 0) {
+          this.selectedTreePhoto = this.latestMetric.photos[0].url;
+        }
+      },
+      error: () => {
+        // Fallback to partial tree so UI still shows something
+        this.selectedTree = tree;
+        this.latestMetric =
+          tree.growthMetrics && tree.growthMetrics.length > 0 ? tree.growthMetrics[0] : null;
+        this.selectedTreePhoto = null;
+      },
+    });
+  }
+
+  openMetricsGallery(photos?: any[] | null): void {
+    this.metricsGalleryImages = photos ?? [];
+    this.metricsGalleryVisible = this.metricsGalleryImages.length > 0;
   }
 
   onSearch(): void {

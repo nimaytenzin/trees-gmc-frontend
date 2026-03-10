@@ -1,0 +1,203 @@
+<p-toast />
+
+<div class="survey-areas">
+  <div class="header">
+    <div>
+      <h1 class="title">Survey Areas</h1>
+      <p class="subtitle">Upload and manage survey area boundaries (GeoJSON)</p>
+    </div>
+    <div class="header-actions">
+      <p-button
+        icon="pi pi-refresh"
+        label="Refresh"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="load()"
+      />
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Left: Upload + Table -->
+    <section class="panel-left">
+      <p-card header="Upload GeoJSON" styleClass="mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-stone-600 mb-1">Name</label>
+            <input
+              pInputText
+              [(ngModel)]="name"
+              class="w-full"
+              placeholder="e.g. GMC-PBR-Existing Tree Survey Area 1"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1">GeoJSON file</label>
+            <input
+              type="file"
+              accept=".geojson,application/geo+json,application/json"
+              (change)="onFileChange($event)"
+              class="block w-full text-sm text-stone-600 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-forest file:text-white hover:file:bg-forest/90 file:cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div class="mt-4 flex items-center justify-end gap-3">
+          <p-button label="Clear" severity="secondary" [outlined]="true" (onClick)="clear()" />
+          <p-button
+            label="Upload"
+            icon="pi pi-upload"
+            [loading]="uploading"
+            [disabled]="!file || !name.trim()"
+            (onClick)="upload()"
+          />
+        </div>
+
+        @if (file && fileError) {
+          <div class="mt-3 text-sm text-red-600">{{ fileError }}</div>
+        }
+      </p-card>
+
+      <div class="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div class="p-4 border-b border-stone-100 flex items-center justify-between">
+          <div class="font-semibold text-stone-700">All survey areas</div>
+          <span class="text-xs text-stone-400">{{ areas.length }} total</span>
+        </div>
+
+        <p-table
+          [value]="areas"
+          [loading]="loading"
+          styleClass="p-datatable-sm"
+          [rowHover]="true"
+          selectionMode="single"
+          [(selection)]="selectedArea"
+          (onRowSelect)="onRowSelect($event)"
+          dataKey="id"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Name</th>
+              <th>Created</th>
+              <th class="w-32"></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-area>
+            <tr [pSelectableRow]="area">
+              <td>
+                <div class="flex items-center gap-2">
+                  <span class="inline-block size-2 rounded-full bg-forest/60"></span>
+                  <span class="font-medium text-forest">{{ area.name }}</span>
+                </div>
+              </td>
+              <td>{{ area.createdAt | date:'mediumDate' }}</td>
+              <td class="text-right">
+                <button
+                  pButton
+                  icon="pi pi-pencil"
+                  severity="secondary"
+                  [rounded]="true"
+                  [text]="true"
+                  (click)="openEdit(area)"
+                  title="Edit"
+                ></button>
+                <button
+                  pButton
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [rounded]="true"
+                  [text]="true"
+                  (click)="remove(area)"
+                  title="Delete"
+                ></button>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td [attr.colspan]="3" class="text-center py-8 text-stone-400">
+                No survey areas yet
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </section>
+
+    <!-- Right: Map -->
+    <section class="panel-right">
+      <div class="map-shell">
+        <div class="map-header">
+          <div class="map-title">
+            <div class="font-semibold text-stone-800">Preview map</div>
+            <div class="text-xs text-stone-500">
+              @if (selectedArea) { {{ selectedArea.name }} } @else { Select an area to preview }
+            </div>
+          </div>
+          <div class="map-actions">
+            @if (selectedArea) {
+              <p-button
+                icon="pi pi-times"
+                label="Clear"
+                severity="secondary"
+                [outlined]="true"
+                (onClick)="selectedArea = null; clearMap()"
+              />
+            }
+          </div>
+        </div>
+
+        <div class="map-frame">
+          <div #mapContainer class="map-container"></div>
+          @if (!selectedArea) {
+            <div class="map-empty">
+              <div class="text-center">
+                <div class="text-sm font-semibold text-stone-700">No survey area selected</div>
+                <div class="text-xs text-stone-500 mt-1">Click a row on the left to preview its boundary.</div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<p-dialog
+  header="Edit survey area"
+  [(visible)]="showEditDialog"
+  [modal]="true"
+  [style]="{ width: '30rem' }"
+  (onHide)="closeEdit()"
+>
+  @if (editingArea) {
+    <div class="flex flex-col gap-3">
+      <div>
+        <label class="block text-sm font-medium text-stone-600 mb-1">Name</label>
+        <input pInputText [(ngModel)]="editName" class="w-full" placeholder="Survey area name" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-stone-600 mb-1">Replace GeoJSON (optional)</label>
+        <input
+          type="file"
+          accept=".geojson,application/geo+json,application/json"
+          (change)="onEditFileChange($event)"
+          class="block w-full text-sm text-stone-600 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-stone-700 file:text-white hover:file:bg-stone-800 file:cursor-pointer"
+        />
+        @if (editFile) {
+          <div class="mt-1 text-xs text-stone-500">Selected: {{ editFile.name }}</div>
+        }
+      </div>
+
+      @if (editError) {
+        <div class="text-sm text-red-600">{{ editError }}</div>
+      }
+
+      <div class="flex justify-end gap-2 mt-2">
+        <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="closeEdit()" />
+        <p-button label="Save" icon="pi pi-check" [loading]="savingEdit" (onClick)="saveEdit()" />
+      </div>
+    </div>
+  }
+</p-dialog>
+

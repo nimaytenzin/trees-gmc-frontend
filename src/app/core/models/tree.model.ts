@@ -26,6 +26,12 @@ export interface TreeFilter {
   search?: string;
   healthCondition?: string;
   speciesId?: string;
+  heightOp?: 'eq' | 'gt' | 'gte' | 'lt' | 'lte';
+  heightValue?: number;
+  dbhOp?: 'eq' | 'gt' | 'gte' | 'lt' | 'lte';
+  dbhValue?: number;
+  canopyOp?: 'eq' | 'gt' | 'gte' | 'lt' | 'lte';
+  canopyValue?: number;
   page?: number;
   limit?: number;
 }

@@ -37,6 +37,16 @@ export class TreeService {
   getPublicTrees(filters: TreeFilter = {}): Observable<PaginatedTrees> {
     let params = new HttpParams();
     if (filters.search) params = params.set('search', filters.search);
+    if (filters.speciesId) params = params.set('speciesId', filters.speciesId);
+    if (filters.heightOp) params = params.set('heightOp', filters.heightOp);
+    if (filters.heightValue !== undefined && filters.heightValue !== null)
+      params = params.set('heightValue', filters.heightValue.toString());
+    if (filters.dbhOp) params = params.set('dbhOp', filters.dbhOp);
+    if (filters.dbhValue !== undefined && filters.dbhValue !== null)
+      params = params.set('dbhValue', filters.dbhValue.toString());
+    if (filters.canopyOp) params = params.set('canopyOp', filters.canopyOp);
+    if (filters.canopyValue !== undefined && filters.canopyValue !== null)
+      params = params.set('canopyValue', filters.canopyValue.toString());
     if (filters.page) params = params.set('page', filters.page.toString());
     if (filters.limit) params = params.set('limit', filters.limit.toString());
     return this.http
@@ -67,6 +77,15 @@ export class TreeService {
     if (filters.search) params = params.set('search', filters.search);
     if (filters.healthCondition) params = params.set('healthCondition', filters.healthCondition);
     if (filters.speciesId) params = params.set('speciesId', filters.speciesId);
+    if (filters.heightOp) params = params.set('heightOp', filters.heightOp);
+    if (filters.heightValue !== undefined && filters.heightValue !== null)
+      params = params.set('heightValue', filters.heightValue.toString());
+    if (filters.dbhOp) params = params.set('dbhOp', filters.dbhOp);
+    if (filters.dbhValue !== undefined && filters.dbhValue !== null)
+      params = params.set('dbhValue', filters.dbhValue.toString());
+    if (filters.canopyOp) params = params.set('canopyOp', filters.canopyOp);
+    if (filters.canopyValue !== undefined && filters.canopyValue !== null)
+      params = params.set('canopyValue', filters.canopyValue.toString());
     if (filters.page) params = params.set('page', filters.page.toString());
     if (filters.limit) params = params.set('limit', filters.limit.toString());
     return this.http

@@ -100,12 +100,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!path) return '';
     // If already absolute, return as-is
     if (/^https?:\/\//i.test(path)) return path;
-    let base = environment.apiBaseUrl.replace(/\/$/, '');
+    const base = environment.apiBaseUrl.replace(/\/$/, '');
     const cleaned = path.startsWith('/') ? path : `/${path}`;
-    // Static uploads are served from app root, not under /api
-    if (cleaned.startsWith('/uploads') && base.endsWith('/api')) {
-      base = base.replace(/\/api$/, '');
-    }
     return `${base}${cleaned}`;
   }
 

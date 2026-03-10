@@ -1,0 +1,96 @@
+/* Global styles – GMC theme (see tailwind.css @theme) */
+body {
+  margin: 0;
+  font-family: var(--font-display), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-background-light);
+}
+
+/* Leaflet marker cluster styles */
+.custom-cluster {
+  background: transparent;
+}
+
+.cluster-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cluster-small {
+  background-color: #87A96B;
+  width: 36px;
+  height: 36px;
+}
+
+.cluster-medium {
+  background-color: #4A7C59;
+  width: 42px;
+  height: 42px;
+}
+
+.cluster-large {
+  background-color: #2D5016;
+  width: 48px;
+  height: 48px;
+}
+
+/* Custom tree marker */
+.custom-tree-marker {
+  background: transparent;
+  border: none;
+}
+
+.tree-marker-pin {
+  width: 24px;
+  height: 24px;
+  background: #2D5016;
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.tree-marker-pin::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 10px;
+  height: 10px;
+  background: #87A96B;
+  border-radius: 50%;
+}
+
+/* PrimeNG overrides for biophilic theme */
+.p-card {
+  border-radius: 12px;
+  border: 1px solid #e7e5e4;
+}
+
+.p-datatable .p-datatable-header {
+  background: white;
+  border: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a29e;
+}

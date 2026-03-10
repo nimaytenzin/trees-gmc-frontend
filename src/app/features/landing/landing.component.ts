@@ -358,7 +358,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   openMetricsGallery(photos?: any[] | null): void {
-    this.metricsGalleryImages = photos ?? [];
+    const raw = photos ?? [];
+    this.metricsGalleryImages = raw.map((p) => ({
+      ...p,
+      url: this.apiUrl(p.url),
+    }));
     this.metricsGalleryVisible = this.metricsGalleryImages.length > 0;
   }
 

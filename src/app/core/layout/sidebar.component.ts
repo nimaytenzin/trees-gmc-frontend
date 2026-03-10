@@ -45,6 +45,14 @@ import { AuthService } from '../services/auth.service';
             <i class="pi pi-map"></i>
             @if (!collapsed) { <span>Map View</span> }
           </a>
+          <a
+            routerLink="/app/dashboard/users"
+            routerLinkActive="bg-white/15"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <i class="pi pi-users"></i>
+            @if (!collapsed) { <span>Enumerator Management</span> }
+          </a>
         }
         <a
           routerLink="/app/trees/register"

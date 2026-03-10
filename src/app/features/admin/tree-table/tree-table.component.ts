@@ -72,6 +72,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             <th>Latest Height</th>
             <th>Latest DBH</th>
             <th>Condition</th>
+            <th>Assessment</th>
             <th>Recorded</th>
             <th></th>
           </tr>
@@ -81,13 +82,22 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             <td>
               <span class="font-medium text-forest">{{ tree.treeId }}</span>
             </td>
-            <td>{{ tree.commonName }}</td>
-            <td class="italic text-stone-500">{{ tree.scientificName }}</td>
-            <td>{{ tree.growthMetrics?.[0]?.heightM || '-' }} m</td>
-            <td>{{ tree.growthMetrics?.[0]?.dbhCm || '-' }} cm</td>
+            <td>{{ tree.commonName ?? tree.species?.commonName ?? '—' }}</td>
+            <td class="italic text-stone-500">{{ tree.scientificName ?? tree.species?.scientificName ?? '—' }}</td>
+            <td>{{ tree.growthMetrics?.[0]?.heightM ?? '-' }} m</td>
+            <td>{{ tree.growthMetrics?.[0]?.dbhCm ?? '-' }} cm</td>
             <td>
               @if (tree.growthMetrics?.[0]) {
-                <app-condition-badge [condition]="tree.growthMetrics[0].condition" />
+                <app-condition-badge [condition]="tree.growthMetrics[0].healthCondition ?? tree.growthMetrics[0].condition ?? ''" />
+              }
+            </td>
+            <td>
+              @if (tree.growthMetrics?.[0]?.assessmentType) {
+                <span class="text-xs px-2 py-0.5 rounded" [class.bg-forest/10]="tree.growthMetrics[0].assessmentType === 'Initial'" [class.text-forest]="tree.growthMetrics[0].assessmentType === 'Initial'" [class.bg-stone-100]="tree.growthMetrics[0].assessmentType === 'Periodic'" [class.text-stone-600]="tree.growthMetrics[0].assessmentType === 'Periodic'">
+                  {{ tree.growthMetrics[0].assessmentType }}
+                </span>
+              } @else {
+                —
               }
             </td>
             <td>{{ tree.growthMetrics?.[0]?.recordedAt | date:'shortDate' }}</td>
@@ -98,7 +108,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
         </ng-template>
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td [attr.colspan]="8" class="text-center py-8 text-stone-400">
+            <td [attr.colspan]="9" class="text-center py-8 text-stone-400">
               <i class="pi pi-search text-3xl mb-2 block"></i>
               No trees found
             </td>
@@ -165,19 +175,20 @@ export class TreeTableComponent implements OnInit {
         const m = t.growthMetrics?.[0];
         return [
           t.treeId,
-          t.commonName,
-          t.scientificName,
+          t.commonName ?? t.species?.commonName ?? '',
+          t.scientificName ?? t.species?.scientificName ?? '',
           t.xCoordinate,
           t.yCoordinate,
-          m?.heightM || '',
-          m?.dbhCm || '',
-          m?.canopySpreadM || '',
-          m?.condition || '',
-          m?.recordedAt || '',
+          m?.heightM ?? '',
+          m?.dbhCm ?? '',
+          m?.canopySpreadM ?? '',
+          m?.healthCondition ?? m?.condition ?? '',
+          m?.assessmentType ?? '',
+          m?.recordedAt ?? '',
         ].join(',');
       });
       const csv =
-        'TreeID,CommonName,ScientificName,Longitude,Latitude,Height(m),DBH(cm),Canopy(m),Condition,RecordedAt\n' +
+        'TreeID,CommonName,ScientificName,Longitude,Latitude,Height(m),DBH(cm),Canopy(m),Condition,AssessmentType,RecordedAt\n' +
         rows.join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);

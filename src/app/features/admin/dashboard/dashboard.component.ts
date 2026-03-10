@@ -73,12 +73,15 @@ import { TreeTableComponent } from '../tree-table/tree-table.component';
       </div>
 
       <!-- Quick Actions -->
-      <div class="flex gap-3 mb-6">
+      <div class="flex flex-wrap gap-3 mb-6">
         <a routerLink="/app/trees/register" class="px-4 py-2 bg-forest text-white rounded-lg hover:bg-forest/90 transition-colors flex items-center gap-2 text-sm">
           <i class="pi pi-plus"></i> Register Tree
         </a>
         <a routerLink="/app/map" class="px-4 py-2 bg-white border border-stone-200 text-forest rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-2 text-sm">
           <i class="pi pi-map"></i> Map View
+        </a>
+        <a routerLink="/app/dashboard/users" class="px-4 py-2 bg-white border border-stone-200 text-forest rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-2 text-sm">
+          <i class="pi pi-users"></i> Enumerator Management
         </a>
       </div>
 

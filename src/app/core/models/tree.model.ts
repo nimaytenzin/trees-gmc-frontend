@@ -17,11 +17,6 @@ export interface Tree {
   dbhM?: number;
   heightM?: number;
   canopySpreadM?: number;
-  existingForm?: 'Good' | 'Fair' | 'Poor';
-  healthCondition?: 'Good' | 'Fair' | 'Poor';
-  amenityValue?: 'High' | 'Medium' | 'Low';
-  transplantSurvival?: 'High' | 'Medium' | 'Low';
-  remarks?: string;
   growthMetrics?: GrowthMetric[];
   createdAt: string;
   updatedAt: string;

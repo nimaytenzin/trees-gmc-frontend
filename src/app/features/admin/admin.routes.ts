@@ -10,4 +10,12 @@ export const ADMIN_ROUTES: Routes = [
         (m) => m.DashboardComponent,
       ),
   },
+  {
+    path: 'users',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+      import('./user-management/user-management.component').then(
+        (m) => m.UserManagementComponent,
+      ),
+  },
 ];

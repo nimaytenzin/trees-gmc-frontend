@@ -72,7 +72,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             @if (selectedTree.growthMetrics?.length) {
               @let latest = selectedTree.growthMetrics![0];
               <div class="flex items-center gap-2">
-                <app-condition-badge [condition]="latest.condition ?? selectedTree.healthCondition ?? ''" />
+                <app-condition-badge [condition]="latest.healthCondition ?? latest.condition ?? ''" />
                 <span class="text-xs text-stone-400">
                   Last: {{ latest.recordedAt | date:'shortDate' }}
                 </span>

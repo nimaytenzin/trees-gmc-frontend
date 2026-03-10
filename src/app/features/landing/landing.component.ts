@@ -54,9 +54,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     const t = this.selectedTree;
     return t?.scientificName ?? t?.species?.scientificName ?? '—';
   }
-  /** Condition for Health section: from latest metric or tree health. */
+  /** Condition for Health section: from latest growth metric. */
   get displayCondition(): string | undefined {
-    return this.latestMetric?.condition ?? this.selectedTree?.healthCondition ?? undefined;
+    return this.latestMetric?.healthCondition ?? this.latestMetric?.condition ?? undefined;
   }
   totalTrees = 0;
   canopyGoal = 84;

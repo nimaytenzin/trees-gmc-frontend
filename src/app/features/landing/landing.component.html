@@ -36,11 +36,11 @@
           </div>
           @if (isLoggedIn) {
             <a routerLink="/app/dashboard" class="no-underline">
-              <p-button label="Dashboard" icon="pi pi-th-large" severity="secondary" [outlined]="true" styleClass="font-bold" />
+              <p-button label="Dashboard" icon="pi pi-th-large" severity="primary" size="small" [outlined]="true" styleClass="font-bold" />
             </a>
           } @else {
             <a routerLink="/login" class="no-underline">
-              <p-button label="Sign In" icon="pi pi-sign-in" severity="success" styleClass="font-bold" />
+              <p-button label="Sign In" icon="pi pi-sign-in" severity="primary" size="small" styleClass="font-bold" />
             </a>
           }
         </div>
@@ -48,6 +48,96 @@
 
       <!-- Main Content: fills remaining height (100dvh minus header) -->
       <main class="relative flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
+        <!-- Sidebar: tree details when a tree is selected (right on desktop) -->
+        @if (selectedTree) {
+          <aside
+            #sidebarArea
+            class="w-full lg:w-[380px] shrink-0 bg-white border-t border-slate-200 lg:border-t-0 lg:border-l lg:border-slate-200 flex flex-col shadow-[0_-10px_30px_rgba(0,0,0,0.05)] lg:shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-10 order-first lg:order-last"
+          >
+            <div class="flex flex-col h-full overflow-y-auto">
+              <div class="flex justify-end p-2 border-b border-slate-100">
+                <button type="button" (click)="closeSidebar()" class="p-2 rounded-full text-slate-500 hover:bg-slate-100 border-0 bg-transparent cursor-pointer" aria-label="Close">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+
+              <!-- 1. Tree ID -->
+              <div class="px-5 pt-4 pb-3 border-b border-slate-100">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tree ID</p>
+                <p class="text-xl font-bold text-primary mt-0.5">{{ selectedTree.treeId }}</p>
+                <p class="text-xs text-slate-500 mt-1">Coordinates: {{ selectedTree.xCoordinate | number:'1.4-4' }}, {{ selectedTree.yCoordinate | number:'1.4-4' }}</p>
+              </div>
+
+              <!-- 2. Species details -->
+              <div class="px-5 py-4 border-b border-slate-100">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Species</p>
+                <p class="font-semibold text-slate-900">{{ displayCommonName }}</p>
+                <p class="text-sm italic text-slate-600">{{ displayScientificName }}</p>
+                @if (selectedTree.species?.family) {
+                  <p class="text-xs text-slate-500 mt-1"><span class="font-medium">Family:</span> {{ selectedTree.species?.family }}</p>
+                }
+                @if (selectedTree.species?.description) {
+                  <p class="text-xs text-slate-600 mt-2 leading-relaxed">{{ selectedTree.species?.description }}</p>
+                }
+              </div>
+
+              <!-- 3. Latest growth metrics -->
+              @if (latestMetric) {
+                <div class="px-5 py-4 border-b border-slate-100">
+                  <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Latest growth record</p>
+                  <div class="flex items-center gap-2 mb-2">
+                    @if (displayCondition) {
+                      <p-tag [value]="displayCondition" [severity]="displayCondition === 'Good' ? 'success' : displayCondition === 'Dead' ? 'secondary' : 'warn'" styleClass="text-[10px]" />
+                    }
+                    @if (latestMetric.assessmentType) {
+                      <span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ latestMetric.assessmentType }} assessment</span>
+                    }
+                  </div>
+                  <p class="text-xs text-slate-500">Recorded: {{ latestMetric.recordedAt | date:'mediumDate' }}</p>
+                  <div class="mt-3 flex flex-wrap gap-4">
+
+                    <div class="flex items-center gap-4 flex-wrap">
+                    <span class="flex items-center gap-1.5 text-sm">
+                      <img [src]="iconPath('treeHeight.png')" alt="" class="size-5 object-contain" />
+                      <span class="text-slate-500">Height</span> <strong class="text-slate-900">{{ latestMetric.heightM }} m</strong>
+                    </span>
+                    <span class="flex items-center gap-1.5 text-sm">
+                      <img [src]="iconPath('treeDbh.png')" alt="" class="size-5 object-contain" />
+                      <span class="text-slate-500">DBH</span> <strong class="text-slate-900">{{ latestMetric.dbhCm }} cm</strong>
+                    </span>
+                    <span class="flex items-center gap-1.5 text-sm">
+                      <img [src]="iconPath('treeCanopy.png')" alt="" class="size-5 object-contain" />
+                      <span class="text-slate-500">Canopy</span> <strong class="text-slate-900">{{ latestMetric.canopySpreadM }} m</strong>
+                    </span>
+                  </div>
+                  </div>
+                  @if (latestMetric.remarks) {
+                    <p class="text-xs text-slate-600 mt-2">{{ latestMetric.remarks }}</p>
+                  }
+                </div>
+              }
+
+              <!-- 4. Chart (height trend, no grids, primary colour) -->
+              @if (sparklineData.length > 1) {
+                <div class="px-5 py-4 border-b border-slate-100">
+                  <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Height trend</p>
+                  <div class="h-[80px] w-full">
+                    <app-sparkline [data]="sparklineData" [color]="chartPrimary" />
+                  </div>
+                </div>
+              }
+
+              <!-- Photo strip (optional) -->
+              @if (selectedTreePhoto) {
+                <div class="px-5 py-3 border-b border-slate-100">
+                  <div class="aspect-video rounded-lg bg-slate-100 bg-cover bg-center" [style.background-image]="'url(' + selectedTreePhoto + ')'"></div>
+                </div>
+              }
+
+            </div>
+          </aside>
+        }
+
         <!-- Map Area (Leaflet): fills main -->
         <div id="mapArea" #mapArea class="relative min-h-0 flex-1 overflow-hidden">
           <div #mapContainer class="absolute inset-0 w-full h-full"></div>
@@ -88,7 +178,7 @@
                 Explore the Mindfulness Canopy
               </h1>
               <p class="text-slate-600 text-sm leading-relaxed mb-3">
-                GMC is a living ecosystem where every tree is a guardian of peace. Switch the map layer (Positron / Satellite) and click markers to explore.
+                GMC is a living ecosystem where every tree is a guardian of peace. Switch the map layer (Positron / Satellite) and click the Tree markers to explore.
               </p>
              
               <div class="flex items-center gap-4 flex-wrap">
@@ -140,186 +230,6 @@
             </div>
           }
         </div>
-
-        <!-- Right Sidebar: only visible when a tree is selected -->
-        @if (selectedTree) {
-          <aside
-            #sidebarArea
-            class="w-full lg:w-[450px] shrink-0 bg-white border-l border-slate-200 flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-10"
-          >
-            <div class="flex flex-col h-full overflow-y-auto">
-              <!-- Close sidebar -->
-              <div class="flex justify-end p-2 border-b border-slate-100">
-                <button
-                  type="button"
-                  (click)="closeSidebar()"
-                  class="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors border-0 bg-transparent cursor-pointer"
-                  title="Close"
-                  aria-label="Close sidebar"
-                >
-                  <i class="pi pi-times"></i>
-                </button>
-              </div>
-              <!-- Tree Hero Image -->
-              <div class="relative h-64 w-full bg-slate-100">
-                @if (selectedTreePhoto) {
-                  <div class="absolute inset-0 bg-cover bg-center" [style.background-image]="'url(' + selectedTreePhoto + ')'"></div>
-                } @else {
-                  <div class="absolute inset-0 bg-cover bg-center"
-                    style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCJDPaRTXJGKnwqzyEvsGeT5wAomweHFkqZGYYbob1qEmkFhSh0V3YQkil5j02uCudlW_5NR8WayIE784OWZ8lHmcxLhTr3Y9xULE4gq1itdFuzZG0SukXi83OYpiosWuFUz0mCZxaUFvbsc0bHn2NsOptSw6l_3PThFHzaD5XX4Sv85nugq9MYkXRuwsIOKeMWcJy2aI8yP6EHrCSY87TC-CuFf8Ul1C7IJgGjm7GGO2AoOBhnXD7gCBMKmtoF7Qfp8iCoDwGnPnU')"
-                  ></div>
-                }
-                <div class="absolute top-4 right-4 flex gap-2">
-                  <p-button icon="pi pi-heart-fill" [rounded]="true" [text]="true" [outlined]="true" severity="secondary" styleClass="!bg-white/20 !border-white/30 text-white hover:!bg-white/40" (onClick)="toggleFavorite()" />
-                  <p-button icon="pi pi-share-alt" [rounded]="true" [text]="true" [outlined]="true" severity="secondary" styleClass="!bg-white/20 !border-white/30 text-white hover:!bg-white/40" (onClick)="shareTree()" />
-                </div>
-                <div class="absolute bottom-0 left-0 w-full p-6 bg-linear-to-t from-black/80 to-transparent">
-                  <div class="flex items-center gap-2 mb-1 flex-wrap">
-                    @if (latestMetric) {
-                      @if (displayCondition) {
-                      <p-tag [value]="displayCondition" [severity]="displayCondition === 'Good' ? 'success' : displayCondition === 'Dead' ? 'secondary' : 'warn'" styleClass="text-[10px]" />
-                    }
-                    }
-                    <p-tag value="Registered" severity="info" styleClass="text-[10px]" />
-                  </div>
-                  <h2 class="text-2xl font-bold text-white">{{ displayCommonName }} ({{ displayScientificName }})</h2>
-                  <p class="text-white/70 text-sm font-medium">
-                    ID: {{ selectedTree.treeId }} &bull; {{ selectedTree.xCoordinate | number:'1.4-4' }}, {{ selectedTree.yCoordinate | number:'1.4-4' }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Tree Details -->
-              <div class="p-6 space-y-8">
-                <!-- Stats Grid -->
-                @if (latestMetric) {
-                  <div class="grid grid-cols-2 gap-4">
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                      <div class="flex items-center gap-2 text-slate-500 mb-1">
-                        <img src="icons/treeHeight.png" alt="" class="size-5 object-contain" />
-                        <span class="text-xs font-medium uppercase tracking-wider">Height</span>
-                      </div>
-                      <p class="text-lg font-bold">{{ latestMetric.heightM }} Meters</p>
-                    </div>
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                      <div class="flex items-center gap-2 text-slate-500 mb-1">
-                        <img src="icons/treeDbh.png" alt="" class="size-5 object-contain" />
-                        <span class="text-xs font-medium uppercase tracking-wider">DBH</span>
-                      </div>
-                      <p class="text-lg font-bold">{{ latestMetric.dbhCm }} cm</p>
-                    </div>
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                      <div class="flex items-center gap-2 text-slate-500 mb-1">
-                        <img src="icons/treeCanopy.png" alt="" class="size-5 object-contain" />
-                        <span class="text-xs font-medium uppercase tracking-wider">Canopy</span>
-                      </div>
-                      <p class="text-lg font-bold">{{ latestMetric.canopySpreadM }} m</p>
-                    </div>
-                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                      <div class="flex items-center gap-2 text-slate-500 mb-1">
-                        <img src="icons/treeRecordings.png" alt="" class="size-5 object-contain" />
-                        <span class="text-xs font-medium uppercase tracking-wider">Recordings</span>
-                      </div>
-                      <p class="text-lg font-bold">{{ selectedTree.growthMetrics?.length || 0 }}</p>
-                    </div>
-                  </div>
-                }
-
-                <!-- Health Status -->
-                @if (latestMetric) {
-                  <div>
-                    <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                      <span class="material-symbols-outlined text-primary text-lg">vital_signs</span>
-                      Health &amp; Status
-                    </h3>
-                    <div class="flex items-center justify-between p-4 rounded-xl" [class]="getConditionPanelClass(displayCondition ?? '')">
-                      <div class="flex items-center gap-3">
-                        <div class="size-3 rounded-full animate-pulse" [class]="getConditionDotClass(displayCondition ?? '')"></div>
-                        <div>
-                          <p class="font-bold text-slate-900">{{ getConditionLabel(displayCondition ?? '') }}</p>
-                          <p class="text-xs text-slate-600">Recorded: {{ latestMetric.recordedAt | date:'mediumDate' }}</p>
-                        </div>
-                      </div>
-                      @if (displayCondition) {
-                        <span class="material-symbols-outlined" [class]="getConditionIconClass(displayCondition)">
-                          {{ displayCondition === 'Good' ? 'verified' : displayCondition === 'Dead' ? 'dangerous' : 'info' }}
-                        </span>
-                      }
-                    </div>
-                  </div>
-                }
-
-                <!-- Botany Details -->
-                <div class="space-y-4">
-                  <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-lg">description</span>
-                    Botany Details
-                  </h3>
-                  <div class="divide-y divide-slate-100">
-                    <div class="flex justify-between py-3">
-                      <span class="text-slate-500 text-sm">Scientific Name</span>
-                      <span class="text-sm font-semibold italic">{{ displayScientificName }}</span>
-                    </div>
-                    <div class="flex justify-between py-3">
-                      <span class="text-slate-500 text-sm">Common Name</span>
-                      <span class="text-sm font-semibold">{{ displayCommonName }}</span>
-                    </div>
-                    <div class="flex justify-between py-3">
-                      <span class="text-slate-500 text-sm">Tree ID</span>
-                      <span class="text-sm font-semibold text-primary">{{ selectedTree.treeId }}</span>
-                    </div>
-                    <div class="flex justify-between py-3">
-                      <span class="text-slate-500 text-sm">Registered</span>
-                      <span class="text-sm font-semibold">{{ selectedTree.createdAt | date:'mediumDate' }}</span>
-                    </div>
-                    @if (latestMetric?.remarks) {
-                      <div class="flex justify-between py-3">
-                        <span class="text-slate-500 text-sm">Remarks</span>
-                        <span class="text-sm font-semibold text-right max-w-[60%]">{{ latestMetric!.remarks }}</span>
-                      </div>
-                    }
-                  </div>
-                </div>
-
-                <!-- Action Buttons (PrimeNG) -->
-                <div class="flex flex-col gap-3 pt-4">
-                  <p-button
-                    label="View Full Registry"
-                    icon="pi pi-book"
-                    styleClass="w-full font-bold py-4"
-                    severity="success"
-                    (onClick)="navigateToRegistry()"
-                  />
-                  <p-button
-                    label="Report Health Concern"
-                    icon="pi pi-flag"
-                    styleClass="w-full font-bold py-4"
-                    severity="secondary"
-                    [outlined]="true"
-                    (onClick)="reportConcern()"
-                  />
-                </div>
-              </div>
-
-              <!-- Footer: Latest metric info -->
-              @if (latestMetric) {
-                <div class="p-6 mt-auto bg-slate-50 border-t border-slate-100">
-                  <div class="flex items-center gap-4">
-                    <div class="size-12 rounded-full bg-white flex items-center justify-center border border-slate-200 shadow-sm">
-                      <span class="material-symbols-outlined text-primary">trending_up</span>
-                    </div>
-                    <div>
-                      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Latest Growth Record</p>
-                      <p class="text-sm font-bold text-slate-800">
-                        H: {{ latestMetric.heightM }}m &bull; DBH: {{ latestMetric.dbhCm }}cm &bull; {{ latestMetric.recordedAt | date:'shortDate' }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          </aside>
-        }
       </main>
     </div>
   </div>

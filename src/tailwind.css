@@ -6,17 +6,17 @@
 
 @theme {
   /* GMC theme (global) */
-  --color-primary: #005841;
+  --color-primary: #00563E;
   --color-accent-blue: #6B7B8E;
   --color-background-light: #f6f8f6;
   --color-background-dark: #102215;
-  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --radius: 0.25rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
   /* Legacy / app-specific */
-  --color-forest: #2D5016;
+  --color-forest: #00563E;
   --color-sage: #87A96B;
   --color-bark: #6B4226;
   --color-cream: #FFF8E7;

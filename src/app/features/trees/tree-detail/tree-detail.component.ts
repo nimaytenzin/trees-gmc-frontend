@@ -45,7 +45,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
               {{ tree.treeId }}
             </span>
             @if (tree.growthMetrics?.length) {
-              <app-condition-badge [condition]="tree.growthMetrics![0].condition" />
+              <!-- <app-condition-badge [condition]="tree.growthMetrics![0].condition" /> -->
             }
           </div>
         </div>

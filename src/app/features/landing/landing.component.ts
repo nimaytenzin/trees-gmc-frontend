@@ -23,6 +23,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { TagModule } from 'primeng/tag';
+import { SparklineComponent } from '../../shared/components/sparkline/sparkline.component';
+
+/** Primary theme colour for charts (no grids). */
+const CHART_PRIMARY = '#00563E';
 
 @Component({
   selector: 'app-landing',
@@ -37,6 +41,7 @@ import { TagModule } from 'primeng/tag';
     InputGroupModule,
     InputGroupAddonModule,
     TagModule,
+    SparklineComponent,
   ],
   templateUrl: './landing.component.html',
 })
@@ -58,6 +63,19 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   get displayCondition(): string | undefined {
     return this.latestMetric?.healthCondition ?? this.latestMetric?.condition ?? undefined;
   }
+  /** Height trend for sparkline (oldest to newest), primary colour. */
+  get sparklineData(): number[] {
+    if (!this.selectedTree?.growthMetrics?.length) return [];
+    return [...this.selectedTree.growthMetrics].reverse().map((m) => m.heightM);
+  }
+  readonly chartPrimary = CHART_PRIMARY;
+
+  /** Resolves asset icon path so it works from any route (dev and prod). */
+  iconPath(filename: string): string {
+    const base = typeof document !== 'undefined' && document.querySelector('base')?.href?.replace(/\/$/, '') || '';
+    return `${base}/assets/icons/${filename}`;
+  }
+
   totalTrees = 0;
   canopyGoal = 84;
   avgHeight = '';
@@ -75,6 +93,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   private positronLayer!: L.TileLayer;
   private satelliteLayer!: L.TileLayer;
   private markersLayer: L.LayerGroup | null = null;
+  private markersByTreeId = new Map<string, L.Marker>();
+  private selectedTreeMapId: string | null = null;
 
   constructor(
     private readonly router: Router,
@@ -147,19 +167,17 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       this.map.removeLayer(this.markersLayer);
     }
     this.markersLayer = L.layerGroup();
-    const icon = L.divIcon({
-      className: 'custom-tree-marker',
-      html: '<div class="tree-marker-pin"></div>',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-    });
+    this.markersByTreeId.clear();
     trees.forEach((tree) => {
-      const marker = L.marker([+tree.yCoordinate, +tree.xCoordinate], { icon });
+      const marker = L.marker([+tree.yCoordinate, +tree.xCoordinate], {
+        icon: this.buildTreeIcon(this.selectedTreeMapId === tree.id),
+      });
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         this.ngZone.run(() => this.selectTree(tree));
       });
       this.markersLayer!.addLayer(marker);
+      this.markersByTreeId.set(tree.id, marker);
     });
     this.map.addLayer(this.markersLayer);
     if (trees.length > 0) {
@@ -167,6 +185,29 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         trees.map((t) => [t.yCoordinate, t.xCoordinate] as L.LatLngTuple),
       );
       this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+  }
+
+  private buildTreeIcon(isSelected: boolean): L.DivIcon {
+    return L.divIcon({
+      className: `custom-tree-marker${isSelected ? ' is-selected' : ''}`,
+      html: '<div class="tree-marker-pin"></div>',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+    });
+  }
+
+  private setSelectedMarker(treeId: string | null): void {
+    if (this.selectedTreeMapId && this.selectedTreeMapId !== treeId) {
+      const prev = this.markersByTreeId.get(this.selectedTreeMapId);
+      if (prev) prev.setIcon(this.buildTreeIcon(false));
+    }
+
+    this.selectedTreeMapId = treeId;
+
+    if (treeId) {
+      const next = this.markersByTreeId.get(treeId);
+      if (next) next.setIcon(this.buildTreeIcon(true));
     }
   }
 
@@ -190,6 +231,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedTree = null;
     this.selectedTreePhoto = null;
     this.latestMetric = null;
+    this.setSelectedMarker(null);
   }
 
   selectTree(tree: Tree): void {
@@ -205,6 +247,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.latestMetric?.photos && this.latestMetric.photos.length > 0) {
       this.selectedTreePhoto = this.latestMetric.photos[0].url;
     }
+
+    this.setSelectedMarker(tree.id);
   }
 
   onSearch(): void {

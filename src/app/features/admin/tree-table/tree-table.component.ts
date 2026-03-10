@@ -93,7 +93,10 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             </td>
             <td>
               @if (tree.growthMetrics?.[0]?.assessmentType) {
-                <span class="text-xs px-2 py-0.5 rounded" [class.bg-forest/10]="tree.growthMetrics[0].assessmentType === 'Initial'" [class.text-forest]="tree.growthMetrics[0].assessmentType === 'Initial'" [class.bg-stone-100]="tree.growthMetrics[0].assessmentType === 'Periodic'" [class.text-stone-600]="tree.growthMetrics[0].assessmentType === 'Periodic'">
+                <span
+                  class="text-xs px-2 py-0.5 rounded"
+                  [ngClass]="tree.growthMetrics[0].assessmentType === 'Initial' ? 'bg-forest/10 text-forest' : 'bg-stone-100 text-stone-600'"
+                >
                   {{ tree.growthMetrics[0].assessmentType }}
                 </span>
               } @else {

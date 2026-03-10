@@ -56,8 +56,8 @@ export class SparklineComponent implements AfterViewInit, OnChanges {
         maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         scales: {
-          x: { display: false },
-          y: { display: false },
+          x: { display: false, grid: { display: false } },
+          y: { display: false, grid: { display: false } },
         },
       },
     };

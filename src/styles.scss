@@ -53,6 +53,8 @@ body {
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  position: relative;
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
 }
 
 .tree-marker-pin::after {
@@ -64,6 +66,26 @@ body {
   height: 10px;
   background: #87A96B;
   border-radius: 50%;
+}
+
+.custom-tree-marker.is-selected .tree-marker-pin {
+  animation: treeMarkerPulse 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(135, 169, 107, 0.8));
+}
+
+@keyframes treeMarkerPulse {
+  0% {
+    transform: rotate(-45deg) scale(1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    transform: rotate(-45deg) scale(1.14);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  }
+  100% {
+    transform: rotate(-45deg) scale(1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
 }
 
 /* PrimeNG overrides for biophilic theme */

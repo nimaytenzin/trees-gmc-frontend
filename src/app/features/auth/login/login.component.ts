@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
@@ -14,6 +15,7 @@ import { AuthService } from '../../../core/services/auth.service';
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     ReactiveFormsModule,
     InputTextModule,
     PasswordModule,
@@ -22,20 +24,58 @@ import { AuthService } from '../../../core/services/auth.service';
     CheckboxModule
   ],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 p-6">
-      <div class="w-full max-w-md animate-fade-in">
-        
-        <div class="text-center mb-10">
-          <div class="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-xl mb-6">
-            <svg class="w-12 h-12 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          </div>
-          <h1 class="text-4xl font-extrabold text-white tracking-tight">Trees-GMC</h1>
-          <p class="text-emerald-200/70 mt-2 font-medium">Gelephu Mindfulness City Portal</p>
+    <div class="min-h-dvh bg-background-light font-display">
+      <header class="border-b border-slate-200 bg-white/80 backdrop-blur-md">
+        <div class="mx-auto max-w-6xl px-6 md:px-10 py-4 flex items-center justify-between">
+          <a routerLink="/" class="flex items-center gap-3 text-slate-900 no-underline">
+            <div class="size-8 text-primary">
+              <span class="material-symbols-outlined text-4xl">eco</span>
+            </div>
+            <div class="leading-tight">
+              <div class="text-lg font-bold tracking-tight">Trees-GMC</div>
+              <div class="text-xs text-slate-500 -mt-0.5">Gelephu Mindfulness City</div>
+            </div>
+          </a>
+          <a routerLink="/" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors no-underline">
+            Back to map
+          </a>
         </div>
+      </header>
 
-        <div class="bg-white/95 backdrop-blur-sm rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-10">
+      <main class="mx-auto max-w-6xl px-6 md:px-10 py-10 md:py-14">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div class="hidden lg:block">
+            <div class="rounded-2xl overflow-hidden border border-slate-200 shadow-2xl bg-white">
+              <div class="aspect-4/5 bg-slate-100">
+                <img
+                  src="/assets/hero1.jpg"
+                  alt="Community tree-watering moment"
+                  class="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="p-5">
+                <p class="text-sm font-semibold text-slate-800">
+                  Caring for new life, together.
+                </p>
+                <p class="mt-1 text-xs text-slate-500 leading-relaxed">
+                  Source:His Majesty King Jigme Khesar Facebook page —
+                  <a
+                    href="https://www.facebook.com/share/1MfJfgWLsM/"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-primary hover:opacity-90 no-underline font-medium"
+                  >
+                    view post
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full max-w-md lg:justify-self-end animate-fade-in">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200 shadow-2xl p-8 md:p-10">
           <div class="mb-8">
             <h2 class="text-2xl font-bold text-slate-800">Welcome back</h2>
             <p class="text-slate-500 text-sm mt-1">Please enter your details to sign in.</p>
@@ -54,7 +94,7 @@ import { AuthService } from '../../../core/services/auth.service';
                   pInputText
                   formControlName="email"
                   type="email"
-                  class="w-full py-3 border-slate-200 focus:border-emerald-500 transition-all rounded-xl"
+                  class="w-full py-3 border-slate-200 focus:border-primary transition-all rounded-xl"
                   [class.ng-dirty]="form.get('email')?.touched"
                   placeholder="name@company.com"
                 />
@@ -64,14 +104,14 @@ import { AuthService } from '../../../core/services/auth.service';
             <div class="flex flex-col gap-2">
               <div class="flex justify-between items-center">
                 <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">Password</label>
-                <a href="#" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700">Forgot?</a>
+                <a href="#" class="text-xs font-semibold text-primary hover:opacity-90">Forgot?</a>
               </div>
               <p-password
                 formControlName="password"
                 [feedback]="false"
                 [toggleMask]="true"
                 styleClass="w-full"
-                inputStyleClass="w-full py-3 border-slate-200 focus:border-emerald-500 rounded-xl"
+                inputStyleClass="w-full py-3 border-slate-200 focus:border-primary rounded-xl"
                 placeholder="••••••••"
               />
             </div>
@@ -86,21 +126,22 @@ import { AuthService } from '../../../core/services/auth.service';
               label="Sign In to Dashboard"
               [loading]="loading"
               [disabled]="form.invalid"
-              styleClass="w-full py-3.5 mt-2 bg-emerald-600 hover:bg-emerald-700 border-none rounded-xl font-bold shadow-lg shadow-emerald-200"
+              styleClass="w-full py-3.5 mt-2 bg-primary hover:bg-primary/90 border-none rounded-xl font-bold shadow-lg shadow-primary/20"
             />
           </form>
           
           <div class="mt-8 text-center">
-            <p class="text-sm text-slate-400 italic font-light">"Nurturing Nature, Building the Future"</p>
+            <p class="text-sm text-slate-500 italic font-light">"Nurturing Nature, Building the Future"</p>
           </div>
         </div>
       </div>
     </div>
+      </main>
   `,
   styles: [`
     :host ::ng-deep {
       .p-inputtext:enabled:focus {
-        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 0 0 2px rgba(0, 86, 62, 0.18);
       }
     }
     .animate-fade-in {

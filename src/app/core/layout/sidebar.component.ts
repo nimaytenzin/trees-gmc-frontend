@@ -16,7 +16,7 @@ import { AuthService } from '../services/auth.service';
       <!-- Logo -->
       <div class="p-4 border-b border-white/10 flex items-center gap-3">
         <div class="w-10 h-10 bg-sage rounded-xl flex items-center justify-center text-xl shrink-0">
-          🌳
+          <span class="material-symbols-outlined text-2xl">eco</span>
         </div>
         @if (!collapsed) {
           <div>

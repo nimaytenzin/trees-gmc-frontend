@@ -85,7 +85,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
                 </div>
                 <div class="bg-stone-50 rounded-lg p-2">
                   <p class="text-xs text-stone-400">DBH</p>
-                  <p class="font-bold text-forest">{{ latest.dbhCm }}cm</p>
+                  <p class="font-bold text-forest">{{ latest.dbhM }}m</p>
                 </div>
                 <div class="bg-stone-50 rounded-lg p-2">
                   <p class="text-xs text-stone-400">Canopy</p>

@@ -9,6 +9,7 @@ import { ButtonModule } from 'primeng/button';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { TreeService } from '../services/tree.service';
+import { environment } from '../../../../environments';
 import { Tree } from '../../../core/models/tree.model';
 import { ConditionBadgeComponent } from '../../../shared/components/condition-badge/condition-badge.component';
 
@@ -68,7 +69,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             </p-card>
             <p-card styleClass="text-center">
               <p class="text-sm text-stone-500">DBH</p>
-              <p class="text-2xl font-bold text-forest">{{ latest.dbhCm }} cm</p>
+              <p class="text-2xl font-bold text-forest">{{ latest.dbhM }} m</p>
             </p-card>
             <p-card styleClass="text-center">
               <p class="text-sm text-stone-500">Canopy</p>
@@ -96,7 +97,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
               <tr>
                 <th>Date</th>
                 <th>Height (m)</th>
-                <th>DBH (cm)</th>
+                <th>DBH (m)</th>
                 <th>Canopy (m)</th>
                 <th>Condition</th>
                 <th>Remarks</th>
@@ -107,7 +108,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
               <tr>
                 <td>{{ metric.recordedAt | date:'mediumDate' }}</td>
                 <td>{{ metric.heightM }}</td>
-                <td>{{ metric.dbhCm }}</td>
+                <td>{{ metric.dbhM }}</td>
                 <td>{{ metric.canopySpreadM }}</td>
                 <td>
                   <app-condition-badge [condition]="metric.healthCondition ?? metric.condition ?? ''" />
@@ -137,10 +138,10 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             [circular]="true"
           >
             <ng-template pTemplate="item" let-item>
-              <img [src]="item.url" class="max-h-[80vh] object-contain" />
+              <img [src]="apiUrl(item.url)" class="max-h-[80vh] object-contain" />
             </ng-template>
             <ng-template pTemplate="thumbnail" let-item>
-              <img [src]="item.url" class="w-16 h-16 object-cover rounded" />
+              <img [src]="apiUrl(item.url)" class="w-16 h-16 object-cover rounded" />
             </ng-template>
           </p-galleria>
         }
@@ -165,6 +166,14 @@ export class TreeDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private treeService: TreeService,
   ) {}
+
+  apiUrl(path: string): string {
+    if (!path) return '';
+    if (/^https?:\/\//i.test(path)) return path;
+    const base = environment.apiBaseUrl.replace(/\/$/, '');
+    const cleaned = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${cleaned}`;
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
@@ -193,8 +202,8 @@ export class TreeDetailComponent implements OnInit {
     this.dbhChartData = {
       labels,
       datasets: [{
-        data: metrics.map((m) => m.dbhCm),
-        label: 'DBH (cm)',
+        data: metrics.map((m) => m.dbhM),
+        label: 'DBH (m)',
         borderColor: '#6B4226',
         backgroundColor: 'rgba(107, 66, 38, 0.1)',
         fill: true,

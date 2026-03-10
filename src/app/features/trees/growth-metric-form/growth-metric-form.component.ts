@@ -74,15 +74,45 @@ import { Tree } from '../../../core/models/tree.model';
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Height (m) *</label>
-              <p-inputNumber formControlName="heightM" [minFractionDigits]="1" [maxFractionDigits]="2" mode="decimal" suffix=" m" class="w-full" inputStyleClass="w-full" />
+              <p-inputNumber
+                formControlName="heightM"
+                [minFractionDigits]="3"
+                [maxFractionDigits]="3"
+                [min]="0.1"
+                [max]="80"
+                mode="decimal"
+                suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-600 mb-1">DBH (cm) *</label>
-              <p-inputNumber formControlName="dbhCm" [minFractionDigits]="1" [maxFractionDigits]="2" mode="decimal" suffix=" cm" class="w-full" inputStyleClass="w-full" />
+              <label class="block text-sm font-medium text-stone-600 mb-1">DBH (m) *</label>
+              <p-inputNumber
+                formControlName="dbhM"
+                [minFractionDigits]="4"
+                [maxFractionDigits]="4"
+                [min]="0.01"
+                [max]="3"
+                mode="decimal"
+                suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Canopy Spread (m) *</label>
-              <p-inputNumber formControlName="canopySpreadM" [minFractionDigits]="1" [maxFractionDigits]="2" mode="decimal" suffix=" m" class="w-full" inputStyleClass="w-full" />
+              <p-inputNumber
+                formControlName="canopySpreadM"
+                [minFractionDigits]="3"
+                [maxFractionDigits]="3"
+                [min]="0.5"
+                [max]="40"
+                mode="decimal"
+                suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Health Condition *</label>
@@ -145,7 +175,7 @@ import { Tree } from '../../../core/models/tree.model';
             label="Save Growth Metric"
             icon="pi pi-check"
             [loading]="loading"
-            [disabled]="form.invalid || !form.value.selectedTree?.id"
+            [disabled]="form.invalid || !form.value.selectedTree?.id || loading"
             severity="success"
           />
         </div>
@@ -192,7 +222,7 @@ export class GrowthMetricFormComponent implements OnInit {
     this.form = this.fb.group({
       selectedTree: [null as any],
       heightM: [null as number | null, Validators.required],
-      dbhCm: [null as number | null, Validators.required],
+      dbhM: [null as number | null, Validators.required],
       canopySpreadM: [null as number | null, Validators.required],
       assessmentType: ['' as string],
       existingForm: ['' as string],
@@ -239,13 +269,14 @@ export class GrowthMetricFormComponent implements OnInit {
   }
 
   onSubmit(): void {
+    if (this.loading) return;
     const tree = this.form.value.selectedTree;
     if (!tree?.id || this.form.invalid) return;
     this.loading = true;
 
     const metricData = {
       heightM: this.form.value.heightM,
-      dbhCm: this.form.value.dbhCm,
+      dbhM: this.form.value.dbhM,
       canopySpreadM: this.form.value.canopySpreadM,
       assessmentType: this.form.value.assessmentType || undefined,
       existingForm: this.form.value.existingForm || undefined,

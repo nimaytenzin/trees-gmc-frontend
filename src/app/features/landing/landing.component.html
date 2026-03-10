@@ -75,7 +75,12 @@
                     />
                   }
                 </div>
-                <p class="text-xs text-slate-500 mt-1">Coordinates: {{ selectedTree.xCoordinate | number:'1.4-4' }}, {{ selectedTree.yCoordinate | number:'1.4-4' }}</p>
+                <p class="text-xs text-slate-500 mt-1">
+                  Coordinates: {{ selectedTree.xCoordinate | number:'1.4-4' }}, {{ selectedTree.yCoordinate | number:'1.4-4' }}
+                  @if (selectedTree.zCoordinate !== undefined && selectedTree.zCoordinate !== null) {
+                    · Elevation: {{ selectedTree.zCoordinate | number:'1.1-1' }} m
+                  }
+                </p>
               </div>
 
               <!-- 2. Species details -->
@@ -97,7 +102,7 @@
                 <div class="px-5 py-4 border-b border-slate-100">
                   <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Assessments</p>
 
-                  <p-accordion [activeIndex]="0">
+                  <p-accordion [(activeIndex)]="assessmentsActiveIndex">
                     @for (metric of selectedTree.growthMetrics; track metric.id) {
                       <p-accordionTab>
                         <ng-template pTemplate="header">
@@ -131,7 +136,7 @@
                             </span>
                             <span class="flex items-center gap-1.5 text-sm">
                               <img [src]="iconPath('treeDbh.png')" alt="" class="size-5 object-contain" />
-                              <span class="text-slate-500">DBH</span> <strong class="text-slate-900">{{ metric.dbhCm }} cm</strong>
+                              <span class="text-slate-500">DBH</span> <strong class="text-slate-900">{{ metric.dbhM }} m</strong>
                             </span>
                             <span class="flex items-center gap-1.5 text-sm">
                               <img [src]="iconPath('treeCanopy.png')" alt="" class="size-5 object-contain" />
@@ -178,7 +183,7 @@
                               @for (photo of photos.slice(0, 6); track photo.id) {
                                 <div
                                   class="aspect-square rounded-lg bg-slate-100 bg-cover bg-center cursor-pointer"
-                                  [style.background-image]="'url(' + photo.url + ')'"
+                                  [style.background-image]="'url(' + apiUrl(photo.url) + ')'"
                                   (click)="openMetricsGallery(photos)"
                                   title="Open gallery"
                                 ></div>

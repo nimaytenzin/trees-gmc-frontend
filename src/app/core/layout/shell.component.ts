@@ -17,7 +17,7 @@ import { TopbarComponent } from './topbar.component';
       />
       <!-- Mobile sidebar overlay -->
       @if (mobileMenuOpen) {
-        <div class="fixed inset-0 z-50 lg:hidden">
+        <div class="fixed inset-0 z-[1000] lg:hidden">
           <div class="absolute inset-0 bg-black/50" (click)="mobileMenuOpen = false"></div>
           <div class="relative w-72">
             <app-sidebar [collapsed]="false" (toggle)="mobileMenuOpen = false" />

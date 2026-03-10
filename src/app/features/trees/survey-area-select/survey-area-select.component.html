@@ -1,0 +1,61 @@
+<div class="survey-select bg-background-light font-display">
+ 
+  <main class="survey-select-main">
+    <div class="survey-select-map">
+      <div #mapContainer class="survey-select-map-canvas"></div>
+
+      <div class="survey-select-map-controls">
+        <button
+          pButton
+          type="button"
+          icon="pi pi-map"
+          class="p-button-rounded p-button"
+          [ngClass]="currentLayer === 'street' ? 'text-slate-700' : 'text-primary'"
+          (click)="toggleLayer()"
+          title="Toggle base map"
+        ></button>
+        <button
+          pButton
+          type="button"
+          icon="pi pi-compass"
+          class="p-button-rounded "
+          [loading]="locating"
+          (click)="locateMe()"
+          title="Locate me"
+        ></button>
+        <button
+          pButton
+          type="button"
+          icon="pi pi-globe"
+          class="p-button-rounded p-button"
+          (click)="zoomToAll()"
+          title="Zoom to extent"
+        ></button>
+      </div>
+
+      <section class="survey-select-panel">
+        <p-card styleClass="shadow-xl">
+          <h2 class="text-sm font-semibold text-slate-800 mb-1">Survey areas</h2>
+          <p class="text-xs text-slate-500 mb-3">
+            Click a boundary on the map to choose a survey area, then proceed to register a tree in that zone.
+          </p>
+          @if (selected) {
+            <p class="text-sm font-medium text-slate-800">{{ selected.name }}</p>
+          } @else {
+            <p class="text-xs text-slate-400">Tap a survey area outline on the map.</p>
+          }
+
+          <div class="mt-4 flex justify-end">
+            <p-button
+              label="Register tree"
+              icon="pi pi-arrow-right"
+              [disabled]="!selected"
+              (onClick)="continue()"
+            />
+          </div>
+        </p-card>
+      </section>
+    </div>
+  </main>
+</div>
+

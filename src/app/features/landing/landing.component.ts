@@ -23,9 +23,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { TagModule } from 'primeng/tag';
-import { SparklineComponent } from '../../shared/components/sparkline/sparkline.component';
 import { DropdownModule } from 'primeng/dropdown';
 import { Species } from '../../core/models/species.model';
+import { environment } from '../../../environments';
 import { AccordionModule } from 'primeng/accordion';
 import { GalleriaModule } from 'primeng/galleria';
 
@@ -46,7 +46,6 @@ const CHART_PRIMARY = '#00563E';
     InputGroupAddonModule,
     TagModule,
     DropdownModule,
-    SparklineComponent,
     AccordionModule,
     GalleriaModule,
   ],
@@ -56,6 +55,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('mapContainer') mapContainer!: ElementRef<HTMLDivElement>;
 
   readonly appName = APP_NAME;
+  assessmentsActiveIndex: number | number[] = 0;
   /** Display common name: from tree or species. */
   get displayCommonName(): string {
     const t = this.selectedTree;
@@ -79,7 +79,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   /** DBH trend for sparkline (oldest to newest). */
   get sparklineDbhData(): number[] {
     if (!this.selectedTree?.growthMetrics?.length) return [];
-    return [...this.selectedTree.growthMetrics].reverse().map((m) => m.dbhCm);
+    return [...this.selectedTree.growthMetrics].reverse().map((m) => m.dbhM);
   }
 
   /** Canopy trend for sparkline (oldest to newest). */
@@ -93,6 +93,16 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   iconPath(filename: string): string {
     const base = typeof document !== 'undefined' && document.querySelector('base')?.href?.replace(/\/$/, '') || '';
     return `${base}/assets/icons/${filename}`;
+  }
+
+  /** Builds full API URL (for images like /uploads/...) */
+  apiUrl(path: string): string {
+    if (!path) return '';
+    // If already absolute, return as-is
+    if (/^https?:\/\//i.test(path)) return path;
+    const base = environment.apiBaseUrl.replace(/\/$/, '');
+    const cleaned = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${cleaned}`;
   }
 
   totalTrees = 0;

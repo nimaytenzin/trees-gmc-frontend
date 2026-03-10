@@ -7,7 +7,7 @@ export interface GrowthMetric {
   /** Initial assessment (first for tree) or Periodic assessment. */
   assessmentType?: AssessmentType;
   heightM: number;
-  dbhCm: number;
+  dbhM: number;
   canopySpreadM: number;
   remarks?: string;
   recordedAt: string;

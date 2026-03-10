@@ -2,6 +2,13 @@ import { Routes } from '@angular/router';
 
 export const TREES_ROUTES: Routes = [
   {
+    path: 'survey-area-select',
+    loadComponent: () =>
+      import('./survey-area-select/survey-area-select.component').then(
+        (m) => m.SurveyAreaSelectComponent,
+      ),
+  },
+  {
     path: 'register',
     loadComponent: () =>
       import('./tree-register/tree-register.component').then(

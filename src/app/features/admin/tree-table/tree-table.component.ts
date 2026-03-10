@@ -175,7 +175,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             <td>{{ tree.commonName ?? tree.species?.commonName ?? '—' }}</td>
             <td class="italic text-stone-500">{{ tree.scientificName ?? tree.species?.scientificName ?? '—' }}</td>
             <td>{{ tree.growthMetrics?.[0]?.heightM ?? '-' }} m</td>
-            <td>{{ tree.growthMetrics?.[0]?.dbhCm ?? '-' }} cm</td>
+            <td>{{ tree.growthMetrics?.[0]?.dbhM ?? '-' }} m</td>
             <td>
               @if (tree.growthMetrics?.[0]) {
                 <app-condition-badge [condition]="tree.growthMetrics[0].healthCondition ?? tree.growthMetrics[0].condition ?? ''" />
@@ -319,7 +319,7 @@ export class TreeTableComponent implements OnInit {
 
   exportCsv(): void {
     this.treeService.getAll({ limit: 10000 }).subscribe((res) => {
-      const rows = res.items.map((t) => {
+        const rows = res.items.map((t) => {
         const m = t.growthMetrics?.[0];
         return [
           t.treeId,
@@ -328,7 +328,7 @@ export class TreeTableComponent implements OnInit {
           t.xCoordinate,
           t.yCoordinate,
           m?.heightM ?? '',
-          m?.dbhCm ?? '',
+          m?.dbhM ?? '',
           m?.canopySpreadM ?? '',
           m?.healthCondition ?? m?.condition ?? '',
           m?.assessmentType ?? '',

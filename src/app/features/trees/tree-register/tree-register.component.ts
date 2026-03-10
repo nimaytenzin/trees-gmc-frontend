@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, finalize, map, of, switchMap } from 'rxjs';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -106,6 +106,20 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
               <label class="block text-sm font-medium text-stone-600 mb-1">Latitude (Y) *</label>
               <p-inputNumber formControlName="yCoordinate" [minFractionDigits]="6" [maxFractionDigits]="8" mode="decimal" class="w-full" inputStyleClass="w-full" />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-600 mb-1">Elevation (Z, m)</label>
+              <p-inputNumber
+                formControlName="zCoordinate"
+                [minFractionDigits]="1"
+                [maxFractionDigits]="3"
+                [min]="0"
+                [max]="3000"
+                mode="decimal"
+                suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
+            </div>
           </div>
         </p-card>
 
@@ -114,15 +128,45 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Height (m) *</label>
-              <p-inputNumber formControlName="heightM" [minFractionDigits]="1" [maxFractionDigits]="2" mode="decimal" suffix=" m" class="w-full" inputStyleClass="w-full" />
+              <p-inputNumber
+                formControlName="heightM"
+                [minFractionDigits]="3"
+                [maxFractionDigits]="3"
+                [min]="0.1"
+                [max]="80"
+                mode="decimal"
+                suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
-              <label class="block text-sm font-medium text-stone-600 mb-1">DBH (cm) *</label>
-              <p-inputNumber formControlName="dbhCm" [minFractionDigits]="1" [maxFractionDigits]="2" mode="decimal" suffix=" cm" class="w-full" inputStyleClass="w-full" />
+              <label class="block text-sm font-medium text-stone-600 mb-1">DBH (m) *</label>
+              <p-inputNumber
+                formControlName="dbhM"
+                [minFractionDigits]="4"
+                [maxFractionDigits]="4"
+                [min]="0.01"
+                [max]="3"
+                mode="decimal"
+                suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Canopy Spread (m) *</label>
-              <p-inputNumber formControlName="canopySpreadM" [minFractionDigits]="1" [maxFractionDigits]="2" mode="decimal" suffix=" m" class="w-full" inputStyleClass="w-full" />
+              <p-inputNumber
+                formControlName="canopySpreadM"
+                [minFractionDigits]="3"
+                [maxFractionDigits]="3"
+                [min]="0.5"
+                [max]="40"
+                mode="decimal"
+                suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-stone-600 mb-1">Health Condition *</label>
@@ -180,7 +224,14 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
 
         <div class="flex justify-end gap-3">
           <p-button label="Reset" severity="secondary" [outlined]="true" (onClick)="form.reset()" />
-          <p-button type="submit" label="Register Tree" icon="pi pi-check" [loading]="loading" [disabled]="form.invalid" severity="success" />
+          <p-button
+            type="submit"
+            label="Register Tree"
+            icon="pi pi-check"
+            [loading]="loading"
+            [disabled]="form.invalid || loading"
+            severity="success"
+          />
         </div>
       </form>
     </div>
@@ -277,6 +328,7 @@ export class TreeRegisterComponent {
     private authService: AuthService,
     private messageService: MessageService,
     private router: Router,
+    private route: ActivatedRoute,
   ) {
     this.isEnumerator = this.authService.currentUser?.role === 'ENUMERATOR';
 
@@ -286,9 +338,10 @@ export class TreeRegisterComponent {
       surveyAreaId: [null as string | null, this.isEnumerator ? Validators.required : []],
       xCoordinate: [null as number | null, Validators.required],
       yCoordinate: [null as number | null, Validators.required],
+      zCoordinate: [null as number | null],
       initialMetric: this.fb.group({
         heightM: [null as number | null, Validators.required],
-        dbhCm: [null as number | null, Validators.required],
+        dbhM: [null as number | null, Validators.required],
         canopySpreadM: [null as number | null, Validators.required],
         healthCondition: ['', Validators.required],
         existingForm: [''],
@@ -307,7 +360,16 @@ export class TreeRegisterComponent {
     });
 
     this.surveyAreasService.getAll().subscribe({
-      next: (areas) => (this.surveyAreas = areas),
+      next: (areas) => {
+        this.surveyAreas = areas;
+        const qpId = this.route.snapshot.queryParamMap.get('surveyAreaId');
+        if (qpId) {
+          this.form.patchValue({ surveyAreaId: qpId });
+        } else if (this.isEnumerator) {
+          // Force enumerators to choose a survey area first
+          this.router.navigate(['/app/trees/survey-area-select']);
+        }
+      },
       error: () => (this.surveyAreas = []),
     });
 
@@ -367,7 +429,7 @@ export class TreeRegisterComponent {
   }
 
   onSubmit(): void {
-    if (this.form.invalid) return;
+    if (this.loading || this.form.invalid) return;
     this.loading = true;
 
     const raw = this.form.getRawValue();
@@ -375,7 +437,7 @@ export class TreeRegisterComponent {
     if (!treePayload?.surveyAreaId) delete treePayload.surveyAreaId;
     const metricPayload = {
       heightM: initialMetric?.heightM,
-      dbhCm: initialMetric?.dbhCm,
+      dbhM: initialMetric?.dbhM,
       canopySpreadM: initialMetric?.canopySpreadM,
       healthCondition: initialMetric?.healthCondition,
       existingForm: initialMetric?.existingForm || undefined,
@@ -424,6 +486,10 @@ export class TreeRegisterComponent {
           });
           this.form.reset();
           this.initialMetricPhotos = [];
+          // Return to public map so new tree is visible
+          this.router
+            .navigateByUrl('/registry', { skipLocationChange: true })
+            .then(() => this.router.navigate(['/'], { fragment: 'mapArea' }));
         },
         error: (err) => {
           this.messageService.add({

@@ -15,6 +15,9 @@ import { AuthService } from '../services/auth.service';
         >
           <i class="pi pi-bars text-forest"></i>
         </button>
+        <div class="size-8 text-primary flex items-center justify-center rounded-full bg-sage/10">
+          <span class="material-symbols-outlined text-4xl">eco</span>
+        </div>
         <h2 class="text-lg font-semibold text-forest">
           Trees Inventory & Growth Tracker
         </h2>

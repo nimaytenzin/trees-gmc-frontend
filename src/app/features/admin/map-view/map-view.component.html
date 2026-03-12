@@ -1,0 +1,304 @@
+<div class="admin-map flex flex-col min-h-0 flex-1">
+  <main class="relative flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
+    <!-- Sidebar: tree details when selected (right on desktop) -->
+    @if (selectedTree) {
+      <aside
+        class="w-full lg:w-[380px] shrink-0 bg-white border-t border-slate-200 lg:border-t-0 lg:border-l lg:border-slate-200 flex flex-col shadow-[0_-10px_30px_rgba(0,0,0,0.05)] lg:shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-10 order-first lg:order-last"
+      >
+        <div class="flex flex-col h-full overflow-y-auto">
+          <div class="flex justify-end p-2 border-b border-slate-100">
+            <button type="button" (click)="closeSidebar()" class="p-2 rounded-full text-slate-500 hover:bg-slate-100 border-0 bg-transparent cursor-pointer" aria-label="Close">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+
+          <!-- Tree ID -->
+          <div class="px-5 pt-4 pb-3 border-b border-slate-100">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tree ID</p>
+            <div class="mt-0.5 flex items-center justify-between gap-3">
+              <p class="text-xl font-bold text-primary">{{ selectedTree.treeId }}</p>
+              @if (latestMetric?.healthCondition ?? latestMetric?.condition) {
+                @let cond = (latestMetric?.healthCondition ?? latestMetric?.condition);
+                <p-tag
+                  [value]="cond"
+                  [severity]="cond === 'Good' ? 'success' : cond === 'Dead' ? 'secondary' : 'warn'"
+                  styleClass="text-[10px] shrink-0"
+                />
+              }
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Coordinates: {{ selectedTree.xCoordinate | number:'1.4-4' }}, {{ selectedTree.yCoordinate | number:'1.4-4' }}
+              @if (selectedTree.zCoordinate !== undefined && selectedTree.zCoordinate !== null) {
+                · Elevation: {{ selectedTree.zCoordinate | number:'1.1-1' }} m
+              }
+            </p>
+          </div>
+
+          <!-- Species -->
+          <div class="px-5 py-4 border-b border-slate-100">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Species</p>
+            <p class="font-semibold text-slate-900">{{ displayCommonName }}</p>
+            <p class="text-sm italic text-slate-600">{{ displayScientificName }}</p>
+            @if (selectedTree.species?.family) {
+              <p class="text-xs text-slate-500 mt-1"><span class="font-medium">Family:</span> {{ selectedTree.species?.family }}</p>
+            }
+            @if (selectedTree.species?.description) {
+              <p class="text-xs text-slate-600 mt-2 leading-relaxed">{{ selectedTree.species?.description }}</p>
+            }
+          </div>
+
+          <!-- Assessments -->
+          @if (selectedTree.growthMetrics?.length) {
+            <div class="px-5 py-4 border-b border-slate-100">
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Assessments</p>
+              <p-accordion [(activeIndex)]="assessmentsActiveIndex">
+                @for (metric of selectedTree.growthMetrics; track metric.id) {
+                  <p-accordionTab>
+                    <ng-template pTemplate="header">
+                      <div class="flex items-center justify-between w-full gap-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="text-sm font-semibold text-slate-800 truncate">
+                            {{ metric.recordedAt | date:'mediumDate' }}
+                          </span>
+                          @if (metric.assessmentType) {
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">
+                              {{ metric.assessmentType }}
+                            </span>
+                          }
+                        </div>
+                        @if (metric.healthCondition ?? metric.condition) {
+                          @let cond = (metric.healthCondition ?? metric.condition);
+                          <p-tag
+                            [value]="cond"
+                            [severity]="cond === 'Good' ? 'success' : cond === 'Dead' ? 'secondary' : 'warn'"
+                            styleClass="text-[10px] shrink-0"
+                          />
+                        }
+                      </div>
+                    </ng-template>
+                    <div class="grid grid-cols-1 gap-3">
+                      <div class="flex items-center gap-4 flex-wrap">
+                        <span class="flex items-center gap-1.5 text-sm">
+                          <img [src]="iconPath('treeHeight.png')" alt="" class="size-5 object-contain" />
+                          <span class="text-slate-500">Height</span> <strong class="text-slate-900">{{ metric.heightM }} m</strong>
+                        </span>
+                        <span class="flex items-center gap-1.5 text-sm">
+                          <img [src]="iconPath('treeDbh.png')" alt="" class="size-5 object-contain" />
+                          <span class="text-slate-500">DBH</span> <strong class="text-slate-900">{{ metric.dbhM }} m</strong>
+                        </span>
+                        <span class="flex items-center gap-1.5 text-sm">
+                          <img [src]="iconPath('treeCanopy.png')" alt="" class="size-5 object-contain" />
+                          <span class="text-slate-500">Canopy</span> <strong class="text-slate-900">{{ metric.canopySpreadM }} m</strong>
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap gap-2 mt-1">
+                        @if (metric.existingForm) {
+                          <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
+                            <span class="font-semibold">Form</span> <span>{{ metric.existingForm }}</span>
+                          </span>
+                        }
+                        @if (metric.amenityValue) {
+                          <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700">
+                            <span class="font-semibold">Amenity</span> <span>{{ metric.amenityValue }}</span>
+                          </span>
+                        }
+                        @if (metric.transplantSurvival) {
+                          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
+                            <span class="font-semibold">Survival</span> <span>{{ metric.transplantSurvival }}</span>
+                          </span>
+                        }
+                      </div>
+                      @if (metric.remarks) {
+                        <p class="text-xs text-slate-600 leading-relaxed">{{ metric.remarks }}</p>
+                      }
+                      @if (metric.photos?.length) {
+                        @let photos = (metric.photos ?? []);
+                        <button
+                          type="button"
+                          class="text-left text-xs font-semibold text-primary hover:underline bg-transparent border-0 cursor-pointer p-0"
+                          (click)="openMetricsGallery(photos)"
+                        >
+                          View photos ({{ photos.length }})
+                        </button>
+                        <div class="grid grid-cols-3 gap-2 mt-1">
+                          @for (photo of photos.slice(0, 6); track photo.id) {
+                            <div
+                              class="aspect-square rounded-lg bg-slate-100 bg-cover bg-center cursor-pointer"
+                              [style.background-image]="'url(' + apiUrl(photo.url) + ')'"
+                              (click)="openMetricsGallery(photos)"
+                              title="Open gallery"
+                            ></div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="text-xs text-slate-400">No images in this assessment.</p>
+                      }
+                    </div>
+                  </p-accordionTab>
+                }
+              </p-accordion>
+            </div>
+          }
+
+          <div class="px-5 py-4 mt-auto">
+            <a
+              [routerLink]="['/app/trees', selectedTree.id]"
+              class="block text-center py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity no-underline"
+            >
+              View Details
+            </a>
+          </div>
+        </div>
+      </aside>
+    }
+
+    <!-- Map area -->
+    <div class="relative min-h-0 flex-1 overflow-hidden" style="min-height: 90vh">
+      <div #mapContainer class="absolute inset-0 w-full h-full"></div>
+
+      <!-- Layer toggle -->
+      <div class="absolute top-4 right-4 z-1000 flex shadow-lg rounded-lg overflow-hidden bg-white/95 backdrop-blur border border-slate-200/80">
+        <span class="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-r border-slate-200 self-center">Layer</span>
+        <button
+          type="button"
+          (click)="setLayer('positron')"
+          class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-0 cursor-pointer bg-transparent"
+          [class.bg-primary]="currentLayer === 'positron'"
+          [class.text-white]="currentLayer === 'positron'"
+          [class.text-slate-600]="currentLayer !== 'positron'"
+          [class.hover:bg-slate-100]="currentLayer !== 'positron'"
+        >
+          <i class="pi pi-map"></i>
+          <span>Positron</span>
+        </button>
+        <button
+          type="button"
+          (click)="setLayer('satellite')"
+          class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-l border-slate-200/80 border-0 cursor-pointer bg-transparent"
+          [class.bg-primary]="currentLayer === 'satellite'"
+          [class.text-white]="currentLayer === 'satellite'"
+          [class.text-slate-600]="currentLayer !== 'satellite'"
+          [class.hover:bg-slate-100]="currentLayer !== 'satellite'"
+        >
+          <i class="pi pi-globe"></i>
+          <span>Satellite</span>
+        </button>
+      </div>
+
+      <!-- Filters card -->
+      <div class="absolute top-6 left-6 max-w-sm hidden md:block z-1000">
+        <p-card styleClass="bg-white/95 shadow-2xl border border-white/20">
+          <h2 class="text-xl font-bold tracking-tight text-slate-900 mb-2">Map View</h2>
+          <p class="text-slate-600 text-sm leading-relaxed mb-3">
+            {{ trees.length }} trees. Click a marker to view details. Switch layer (Positron / Satellite) as needed.
+          </p>
+          <div class="flex items-center gap-4 flex-wrap">
+            <div class="flex flex-col">
+              <span class="text-2xl font-bold text-primary">{{ totalTrees | number }}</span>
+              <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Trees</span>
+            </div>
+            <div class="w-px h-8 bg-slate-200"></div>
+            <div class="flex flex-col">
+              <span class="text-2xl font-bold text-primary">{{ speciesCount | number }}</span>
+              <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Species</span>
+            </div>
+            @if (avgHeight) {
+              <div class="w-px h-8 bg-slate-200"></div>
+              <div class="flex flex-col">
+                <span class="text-2xl font-bold text-primary">{{ avgHeight }}m</span>
+                <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Avg Height</span>
+              </div>
+            }
+          </div>
+          <div class="flex items-center mt-4 justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Filters</span>
+            <p-button icon="pi pi-filter-slash" label="Clear" severity="secondary" size="small" [outlined]="true" (onClick)="clearMapFilters()" />
+          </div>
+          <div class="flex flex-col gap-3 mt-3">
+            <div>
+              <label class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Species</label>
+              <p-dropdown
+                [(ngModel)]="selectedSpeciesId"
+                [options]="speciesOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="All species"
+                [showClear]="true"
+                styleClass="w-full mt-1"
+                (onChange)="loadMapTrees()"
+              />
+            </div>
+            <details class="rounded-lg border border-slate-200 bg-white/60">
+              <summary class="cursor-pointer select-none list-none px-3 py-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <i class="pi pi-sliders-h text-slate-500 text-sm"></i>
+                  <span class="text-sm font-semibold text-slate-700">Measurements</span>
+                </div>
+                <i class="pi pi-chevron-down text-slate-500 text-xs"></i>
+              </summary>
+              <div class="px-3 pb-3 pt-1 grid grid-cols-1 gap-2">
+                <div class="grid grid-cols-12 items-center gap-2">
+                  <span class="text-sm text-slate-600 col-span-3">Height</span>
+                  <p-dropdown
+                    [(ngModel)]="heightOp"
+                    [options]="numericOpOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    [showClear]="false"
+                    styleClass="w-full col-span-3"
+                    (onChange)="loadMapTrees()"
+                  />
+                  <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="heightValue" (input)="onMapFilterInput()" />
+                </div>
+                <div class="grid grid-cols-12 items-center gap-2">
+                  <span class="text-sm text-slate-600 col-span-3">DBH</span>
+                  <p-dropdown
+                    [(ngModel)]="dbhOp"
+                    [options]="numericOpOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    [showClear]="false"
+                    styleClass="w-full col-span-3"
+                    (onChange)="loadMapTrees()"
+                  />
+                  <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="dbhValue" (input)="onMapFilterInput()" />
+                </div>
+                <div class="grid grid-cols-12 items-center gap-2">
+                  <span class="text-sm text-slate-600 col-span-3">Canopy</span>
+                  <p-dropdown
+                    [(ngModel)]="canopyOp"
+                    [options]="numericOpOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    [showClear]="false"
+                    styleClass="w-full col-span-3"
+                    (onChange)="loadMapTrees()"
+                  />
+                  <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="canopyValue" (input)="onMapFilterInput()" />
+                </div>
+              </div>
+            </details>
+          </div>
+        </p-card>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Fullscreen gallery for metric photos -->
+@if (metricsGalleryVisible && metricsGalleryImages.length) {
+  <p-galleria
+    [value]="metricsGalleryImages"
+    [(visible)]="metricsGalleryVisible"
+    [fullScreen]="true"
+    [numVisible]="6"
+    [circular]="true"
+  >
+    <ng-template pTemplate="item" let-item>
+      <img [src]="item.url" class="max-h-[80vh] object-contain" />
+    </ng-template>
+    <ng-template pTemplate="thumbnail" let-item>
+      <img [src]="item.url" class="w-16 h-16 object-cover rounded" />
+    </ng-template>
+  </p-galleria>
+}

@@ -77,6 +77,7 @@ export class TreeService {
     if (filters.search) params = params.set('search', filters.search);
     if (filters.healthCondition) params = params.set('healthCondition', filters.healthCondition);
     if (filters.speciesId) params = params.set('speciesId', filters.speciesId);
+    if (filters.surveyAreaId) params = params.set('surveyAreaId', filters.surveyAreaId);
     if (filters.heightOp) params = params.set('heightOp', filters.heightOp);
     if (filters.heightValue !== undefined && filters.heightValue !== null)
       params = params.set('heightValue', filters.heightValue.toString());
@@ -91,6 +92,11 @@ export class TreeService {
     return this.http
       .get<{ data: PaginatedTrees }>(this.API, { params })
       .pipe(map((r) => r.data));
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http
+      .delete<void>(`${this.API}/${id}`);
   }
 
   getAllForMap(): Observable<Tree[]> {

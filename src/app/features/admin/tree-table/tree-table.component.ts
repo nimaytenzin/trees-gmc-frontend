@@ -7,9 +7,15 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { TreeService } from '../../trees/services/tree.service';
+import { SurveyAreasService } from '../../../core/services/survey-areas.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Tree } from '../../../core/models/tree.model';
 import { Species } from '../../../core/models/species.model';
+import { SurveyArea } from '../../../core/models/survey-area.model';
 import { ConditionBadgeComponent } from '../../../shared/components/condition-badge/condition-badge.component';
 
 @Component({
@@ -24,9 +30,14 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
     DropdownModule,
     ButtonModule,
     TagModule,
+    ConfirmDialogModule,
+    ToastModule,
     ConditionBadgeComponent,
   ],
+  providers: [ConfirmationService, MessageService],
   template: `
+    <p-toast />
+    <p-confirmDialog />
     <div class="bg-white rounded-xl border border-stone-200 overflow-hidden">
       <!-- Filters -->
       <div class="p-4 border-b border-stone-100 flex flex-col gap-3">
@@ -62,6 +73,17 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             placeholder="All Conditions"
             [showClear]="true"
             styleClass="w-full md:w-48"
+          />
+
+          <p-dropdown
+            [(ngModel)]="selectedSurveyAreaId"
+            [options]="surveyAreaOptions"
+            optionLabel="label"
+            optionValue="value"
+            (onChange)="loadTrees()"
+            placeholder="All Survey Areas"
+            [showClear]="true"
+            styleClass="w-full md:w-56"
           />
 
           <div class="flex gap-2">
@@ -195,7 +217,12 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             </td>
             <td>{{ tree.growthMetrics?.[0]?.recordedAt | date:'shortDate' }}</td>
             <td>
-              <button pButton icon="pi pi-eye" [rounded]="true" [text]="true" severity="secondary" [routerLink]="['/app/trees', tree.id]"></button>
+              <div class="flex gap-1">
+                <button pButton icon="pi pi-eye" [rounded]="true" [text]="true" severity="secondary" [routerLink]="['/app/trees', tree.id]"></button>
+                @if (isAdmin) {
+                  <button pButton icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" (click)="confirmDelete($event, tree)"></button>
+                }
+              </div>
             </td>
           </tr>
         </ng-template>
@@ -219,7 +246,10 @@ export class TreeTableComponent implements OnInit {
   searchQuery = '';
   selectedCondition: string | null = null;
   selectedSpeciesId: string | null = null;
+  selectedSurveyAreaId: string | null = null;
   speciesOptions: { label: string; value: string }[] = [];
+  surveyAreaOptions: { label: string; value: string }[] = [];
+  isAdmin = false;
   private searchTimeout: any;
   private metricFilterTimeout: any;
 
@@ -245,7 +275,15 @@ export class TreeTableComponent implements OnInit {
   canopyOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' | null = null;
   canopyValue: number | null = null;
 
-  constructor(private treeService: TreeService) {}
+  constructor(
+    private treeService: TreeService,
+    private surveyAreasService: SurveyAreasService,
+    private authService: AuthService,
+    private confirmationService: ConfirmationService,
+    private messageService: MessageService,
+  ) {
+    this.isAdmin = this.authService.currentUser?.role === 'ADMIN';
+  }
 
   ngOnInit(): void {
     this.treeService.getSpecies().subscribe({
@@ -255,6 +293,15 @@ export class TreeTableComponent implements OnInit {
             label: `${s.commonName} (${s.scientificName})`,
             value: s.id,
           }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      },
+      error: () => {},
+    });
+
+    this.surveyAreasService.getAll().subscribe({
+      next: (areas: SurveyArea[]) => {
+        this.surveyAreaOptions = areas
+          .map((a) => ({ label: a.name, value: a.id }))
           .sort((a, b) => a.label.localeCompare(b.label));
       },
       error: () => {},
@@ -285,6 +332,7 @@ export class TreeTableComponent implements OnInit {
         search: this.searchQuery || undefined,
         healthCondition: this.selectedCondition || undefined,
         speciesId: this.selectedSpeciesId || undefined,
+        surveyAreaId: this.selectedSurveyAreaId || undefined,
         heightOp: this.heightOp || undefined,
         heightValue: this.heightValue ?? undefined,
         dbhOp: this.dbhOp || undefined,
@@ -308,6 +356,7 @@ export class TreeTableComponent implements OnInit {
     this.searchQuery = '';
     this.selectedCondition = null;
     this.selectedSpeciesId = null;
+    this.selectedSurveyAreaId = null;
     this.heightOp = null;
     this.heightValue = null;
     this.dbhOp = null;
@@ -317,27 +366,84 @@ export class TreeTableComponent implements OnInit {
     this.loadTrees(1);
   }
 
+  confirmDelete(event: Event, tree: Tree): void {
+    event.stopPropagation();
+    this.confirmationService.confirm({
+      target: event.target as EventTarget,
+      message: `Delete tree ${tree.treeId}? This will also remove all its growth metrics and photos. This action cannot be undone.`,
+      header: 'Confirm Deletion',
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.treeService.delete(tree.id).subscribe({
+          next: () => {
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Deleted',
+              detail: `Tree ${tree.treeId} has been deleted`,
+            });
+            this.loadTrees();
+          },
+          error: (err) => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: err.error?.message || 'Failed to delete tree',
+            });
+          },
+        });
+      },
+    });
+  }
+
   exportCsv(): void {
     this.treeService.getAll({ limit: 10000 }).subscribe((res) => {
-        const rows = res.items.map((t) => {
+      const esc = (v: unknown) => {
+        const s = String(v ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g, '""')}"`
+          : s;
+      };
+
+      const headers = [
+        'TreeID', 'CommonName', 'ScientificName', 'SpeciesFamily',
+        'X_Easting', 'Y_Northing', 'Z_Elevation',
+        'YearOfPlantation', 'SurveyArea',
+        'CreatedAt', 'UpdatedAt',
+        'LatestHeight(m)', 'LatestDBH(m)', 'LatestCanopySpread(m)',
+        'HealthCondition', 'ExistingForm',
+        'AmenityValue', 'TransplantSurvival',
+        'AssessmentType', 'Remarks', 'RecordedAt',
+      ];
+
+      const rows = res.items.map((t) => {
         const m = t.growthMetrics?.[0];
         return [
           t.treeId,
           t.commonName ?? t.species?.commonName ?? '',
           t.scientificName ?? t.species?.scientificName ?? '',
+          t.species?.family ?? '',
           t.xCoordinate,
           t.yCoordinate,
+          t.zCoordinate ?? '',
+          t.yearOfPlantation ?? '',
+          t.surveyArea?.name ?? '',
+          t.createdAt,
+          t.updatedAt,
           m?.heightM ?? '',
           m?.dbhM ?? '',
           m?.canopySpreadM ?? '',
           m?.healthCondition ?? m?.condition ?? '',
+          m?.existingForm ?? '',
+          m?.amenityValue ?? '',
+          m?.transplantSurvival ?? '',
           m?.assessmentType ?? '',
+          m?.remarks ?? '',
           m?.recordedAt ?? '',
-        ].join(',');
+        ].map(esc).join(',');
       });
-      const csv =
-        'TreeID,CommonName,ScientificName,Longitude,Latitude,Height(m),DBH(cm),Canopy(m),Condition,AssessmentType,RecordedAt\n' +
-        rows.join('\n');
+
+      const csv = headers.join(',') + '\n' + rows.join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

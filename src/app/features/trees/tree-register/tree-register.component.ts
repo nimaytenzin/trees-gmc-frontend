@@ -10,6 +10,7 @@ import { Textarea } from 'primeng/inputtextarea';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { DialogModule } from 'primeng/dialog';
+import { TooltipModule } from 'primeng/tooltip';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { TreeService } from '../services/tree.service';
@@ -32,6 +33,7 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
     ButtonModule,
     CardModule,
     DialogModule,
+    TooltipModule,
     ToastModule,
     PhotoUploadComponent,
   ],
@@ -75,7 +77,7 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
               <label class="block text-sm font-medium text-stone-600 mb-1">Species *</label>
               <div class="flex gap-2 items-start">
                 <p-dropdown
-                  class="flex-1"
+                  class="flex-1 min-w-0"
                   formControlName="speciesId"
                   [options]="speciesOptions"
                   optionLabel="display"
@@ -85,14 +87,25 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
                   placeholder="Select species"
                   styleClass="w-full"
                 />
-                <p-button
-                  type="button"
-                  icon="pi pi-plus"
-                  label="Add"
-                  severity="secondary"
-                  [outlined]="true"
-                  (onClick)="openAddSpecies()"
-                />
+                <div class="flex gap-1 shrink-0">
+                  <p-button
+                    type="button"
+                    icon="pi pi-pencil"
+                    severity="secondary"
+                    [outlined]="true"
+                    [disabled]="!form.value.speciesId"
+                    (onClick)="openEditSpecies()"
+                    pTooltip="Edit selected species"
+                  />
+                  <p-button
+                    type="button"
+                    icon="pi pi-plus"
+                    severity="secondary"
+                    [outlined]="true"
+                    (onClick)="openAddSpecies()"
+                    pTooltip="Add new species"
+                  />
+                </div>
               </div>
               <p class="text-xs text-stone-500 mt-1">
                 Can't find it? Add a new species and it will appear in the list.
@@ -130,6 +143,18 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
                 [max]="3000"
                 mode="decimal"
                 suffix=" m"
+                class="w-full"
+                inputStyleClass="w-full"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-stone-600 mb-1">Year of Plantation</label>
+              <p-inputNumber
+                formControlName="yearOfPlantation"
+                [useGrouping]="false"
+                [min]="1900"
+                [max]="2099"
+                placeholder="e.g. 2020"
                 class="w-full"
                 inputStyleClass="w-full"
               />
@@ -255,7 +280,7 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
     </div>
 
     <p-dialog
-      header="Add species"
+      [header]="editingSpeciesId ? 'Edit species' : 'Add species'"
       [(visible)]="showAddSpeciesDialog"
       [modal]="true"
       [draggable]="false"
@@ -265,7 +290,7 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
       <form [formGroup]="addSpeciesForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium text-stone-600 mb-1">Species ID *</label>
-          <input pInputText formControlName="speciesId" class="w-full" placeholder="e.g. SPEC-011" />
+          <input pInputText formControlName="speciesId" class="w-full" placeholder="e.g. SPEC-011" [readOnly]="!!editingSpeciesId" />
         </div>
         <div>
           <label class="block text-sm font-medium text-stone-600 mb-1">Common name *</label>
@@ -297,7 +322,7 @@ import { PhotoUploadComponent } from '../../../shared/components/photo-upload/ph
           />
           <p-button
             type="button"
-            label="Save species"
+            [label]="editingSpeciesId ? 'Update species' : 'Save species'"
             icon="pi pi-check"
             [loading]="savingSpecies"
             [disabled]="addSpeciesForm.invalid"
@@ -338,6 +363,7 @@ export class TreeRegisterComponent {
   loading = false;
   showAddSpeciesDialog = false;
   savingSpecies = false;
+  editingSpeciesId: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -357,6 +383,7 @@ export class TreeRegisterComponent {
       xCoordinate: [null as number | null, Validators.required],
       yCoordinate: [null as number | null, Validators.required],
       zCoordinate: [null as number | null],
+      yearOfPlantation: [null as number | null],
       initialMetric: this.fb.group({
         heightM: [null as number | null, Validators.required],
         dbhM: [null as number | null, Validators.required],
@@ -407,7 +434,24 @@ export class TreeRegisterComponent {
   }
 
   openAddSpecies(): void {
+    this.editingSpeciesId = null;
     this.addSpeciesForm.reset();
+    this.showAddSpeciesDialog = true;
+    this.savingSpecies = false;
+  }
+
+  openEditSpecies(): void {
+    const selectedId = this.form.value.speciesId;
+    const species = this.speciesOptions.find((s) => s.id === selectedId);
+    if (!species) return;
+    this.editingSpeciesId = species.id;
+    this.addSpeciesForm.patchValue({
+      speciesId: species.speciesId,
+      commonName: species.commonName,
+      scientificName: species.scientificName,
+      family: species.family ?? '',
+      description: species.description ?? '',
+    });
     this.showAddSpeciesDialog = true;
     this.savingSpecies = false;
   }
@@ -415,6 +459,7 @@ export class TreeRegisterComponent {
   closeAddSpecies(): void {
     this.showAddSpeciesDialog = false;
     this.savingSpecies = false;
+    this.editingSpeciesId = null;
   }
 
   saveSpecies(): void {
@@ -422,25 +467,28 @@ export class TreeRegisterComponent {
     this.savingSpecies = true;
     const payload = this.addSpeciesForm.value;
 
-    this.treeService
-      .createSpecies(payload)
+    const request$ = this.editingSpeciesId
+      ? this.treeService.updateSpecies(this.editingSpeciesId, payload)
+      : this.treeService.createSpecies(payload);
+
+    request$
       .pipe(finalize(() => (this.savingSpecies = false)))
       .subscribe({
-        next: (created) => {
+        next: (saved) => {
           this.messageService.add({
             severity: 'success',
-            summary: 'Species added',
-            detail: `${created.commonName} saved`,
+            summary: this.editingSpeciesId ? 'Species updated' : 'Species added',
+            detail: `${saved.commonName} saved`,
           });
           this.closeAddSpecies();
           this.loadSpecies();
-          this.form.patchValue({ speciesId: created.id });
+          this.form.patchValue({ speciesId: saved.id });
         },
         error: (err) => {
           this.messageService.add({
             severity: 'error',
             summary: 'Error',
-            detail: err.error?.message || 'Failed to create species',
+            detail: err.error?.message || `Failed to ${this.editingSpeciesId ? 'update' : 'create'} species`,
           });
         },
       });

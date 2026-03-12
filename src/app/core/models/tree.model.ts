@@ -1,5 +1,6 @@
 import { Species } from './species.model';
 import { GrowthMetric } from './growth-metric.model';
+import { SurveyArea } from './survey-area.model';
 
 export interface Tree {
   id: string;
@@ -14,6 +15,8 @@ export interface Tree {
   yCoordinate: number;
   zCoordinate?: number;
   yearOfPlantation?: number;
+  surveyAreaId?: string | null;
+  surveyArea?: SurveyArea | null;
   dbhM?: number;
   heightM?: number;
   canopySpreadM?: number;
@@ -26,6 +29,7 @@ export interface TreeFilter {
   search?: string;
   healthCondition?: string;
   speciesId?: string;
+  surveyAreaId?: string;
   heightOp?: 'eq' | 'gt' | 'gte' | 'lt' | 'lte';
   heightValue?: number;
   dbhOp?: 'eq' | 'gt' | 'gte' | 'lt' | 'lte';

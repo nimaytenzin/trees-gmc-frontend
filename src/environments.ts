@@ -1,15 +1,19 @@
 export interface Environment {
   apiBaseUrl: string;
+  /** Base URL for uploaded files (no trailing slash). */
+  uploadsBaseUrl: string;
 }
 
 const devEnvironment: Environment = {
-  // Backend dev API (no trailing slash)
-  apiBaseUrl: 'http://localhost:3000',
+  apiBaseUrl: 'http://localhost:3008/api',
+  // NestJS ServeStaticModule serves /uploads directly (no /api prefix in dev)
+  uploadsBaseUrl: 'http://localhost:3008',
 };
 
 const prodEnvironment: Environment = {
-  // Backend prod API (already includes /api)
   apiBaseUrl: 'https://treesgmc.ddnsfree.com/api',
+  // nginx: location /api/uploads/ → proxy_pass :2349/uploads/
+  uploadsBaseUrl: 'https://treesgmc.ddnsfree.com/api',
 };
 
 export const environment: Environment =

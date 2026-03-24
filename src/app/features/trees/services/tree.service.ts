@@ -5,12 +5,13 @@ import { Tree, TreeFilter, PaginatedTrees, TreeStatistics } from '../../../core/
 import { Species } from '../../../core/models/species.model';
 import { GrowthMetric } from '../../../core/models/growth-metric.model';
 import { Photo } from '../../../core/models/photo.model';
+import { environment } from '../../../../environments';
 
 @Injectable({ providedIn: 'root' })
 export class TreeService {
-  private readonly API = '/api/trees';
-  private readonly SPECIES_API = '/api/species';
-  private readonly PUBLIC_API = '/api/public';
+  private readonly API = `${environment.apiBaseUrl}/trees`;
+  private readonly SPECIES_API = `${environment.apiBaseUrl}/species`;
+  private readonly PUBLIC_API = `${environment.apiBaseUrl}/public`;
 
   constructor(private http: HttpClient) {}
 
@@ -70,6 +71,10 @@ export class TreeService {
 
   create(data: any): Observable<Tree> {
     return this.http.post<{ data: Tree }>(this.API, data).pipe(map((r) => r.data));
+  }
+
+  update(id: string, data: any): Observable<Tree> {
+    return this.http.put<{ data: Tree }>(`${this.API}/${id}`, data).pipe(map((r) => r.data));
   }
 
   getAll(filters: TreeFilter = {}): Observable<PaginatedTrees> {
@@ -157,11 +162,21 @@ export class TreeService {
       .pipe(map((r) => r.data));
   }
 
+  updateGrowthMetric(treeId: string, metricId: string, data: any): Observable<GrowthMetric> {
+    return this.http
+      .put<{ data: GrowthMetric }>(`${this.API}/${treeId}/growth-metrics/${metricId}`, data)
+      .pipe(map((r) => r.data));
+  }
+
+  deleteGrowthMetric(treeId: string, metricId: string): Observable<void> {
+    return this.http.delete<void>(`${this.API}/${treeId}/growth-metrics/${metricId}`);
+  }
+
   uploadPhotos(metricId: string, files: File[]): Observable<Photo[]> {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     return this.http
-      .post<{ data: Photo[] }>(`/api/growth-metrics/${metricId}/photos`, formData)
+      .post<{ data: Photo[] }>(`${environment.apiBaseUrl}/growth-metrics/${metricId}/photos`, formData)
       .pipe(map((r) => r.data));
   }
 }

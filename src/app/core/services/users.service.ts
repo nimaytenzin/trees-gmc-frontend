@@ -3,10 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { User } from '../models/user.model';
 import { BulkUploadResult } from '../models/user.model';
+import { environment } from '../../../environments';
 
 @Injectable({ providedIn: 'root' })
 export class UsersService {
-  private readonly API = '/api/users';
+  private readonly API = `${environment.apiBaseUrl}/users`;
 
   constructor(private http: HttpClient) {}
 

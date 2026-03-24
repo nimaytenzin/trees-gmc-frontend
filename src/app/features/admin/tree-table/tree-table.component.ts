@@ -17,6 +17,7 @@ import { Tree } from '../../../core/models/tree.model';
 import { Species } from '../../../core/models/species.model';
 import { SurveyArea } from '../../../core/models/survey-area.model';
 import { ConditionBadgeComponent } from '../../../shared/components/condition-badge/condition-badge.component';
+import { TreeEditDialogComponent } from '../tree-edit-dialog/tree-edit-dialog.component';
 
 @Component({
   selector: 'app-tree-table',
@@ -33,11 +34,17 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
     ConfirmDialogModule,
     ToastModule,
     ConditionBadgeComponent,
+    TreeEditDialogComponent,
   ],
   providers: [ConfirmationService, MessageService],
   template: `
     <p-toast />
     <p-confirmDialog />
+    <app-tree-edit-dialog
+      [(visible)]="editDialogVisible"
+      [tree]="editingTree"
+      (treeSaved)="loadTrees()"
+    />
     <div class="bg-white rounded-xl border border-stone-200 overflow-hidden">
       <!-- Filters -->
       <div class="p-4 border-b border-stone-100 flex flex-col gap-3">
@@ -219,6 +226,7 @@ import { ConditionBadgeComponent } from '../../../shared/components/condition-ba
             <td>
               <div class="flex gap-1">
                 <button pButton icon="pi pi-eye" [rounded]="true" [text]="true" severity="secondary" [routerLink]="['/app/trees', tree.id]"></button>
+                <button pButton icon="pi pi-pencil" [rounded]="true" [text]="true" severity="info" (click)="openEdit($event, tree)"></button>
                 @if (isAdmin) {
                   <button pButton icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" (click)="confirmDelete($event, tree)"></button>
                 }
@@ -250,6 +258,8 @@ export class TreeTableComponent implements OnInit {
   speciesOptions: { label: string; value: string }[] = [];
   surveyAreaOptions: { label: string; value: string }[] = [];
   isAdmin = false;
+  editDialogVisible = false;
+  editingTree: Tree | null = null;
   private searchTimeout: any;
   private metricFilterTimeout: any;
 
@@ -364,6 +374,12 @@ export class TreeTableComponent implements OnInit {
     this.canopyOp = null;
     this.canopyValue = null;
     this.loadTrees(1);
+  }
+
+  openEdit(event: Event, tree: Tree): void {
+    event.stopPropagation();
+    this.editingTree = tree;
+    this.editDialogVisible = true;
   }
 
   confirmDelete(event: Event, tree: Tree): void {

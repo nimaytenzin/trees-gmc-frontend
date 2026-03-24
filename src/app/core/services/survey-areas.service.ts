@@ -2,10 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { SurveyArea } from '../models/survey-area.model';
+import { environment } from '../../../environments';
 
 @Injectable({ providedIn: 'root' })
 export class SurveyAreasService {
-  private readonly API = '/api/survey-areas';
+  private readonly API = `${environment.apiBaseUrl}/survey-areas`;
 
   constructor(private http: HttpClient) {}
 

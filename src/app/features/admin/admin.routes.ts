@@ -34,4 +34,12 @@ export const ADMIN_ROUTES: Routes = [
         (m) => m.UserManagementComponent,
       ),
   },
+  {
+    path: 'tree-registry',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+      import('./tree-registry/tree-registry.component').then(
+        (m) => m.AdminTreeRegistryComponent,
+      ),
+  },
 ];

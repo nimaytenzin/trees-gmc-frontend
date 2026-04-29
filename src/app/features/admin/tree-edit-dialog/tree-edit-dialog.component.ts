@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -287,11 +287,11 @@ import { SurveyArea } from '../../../core/models/survey-area.model';
     </p-dialog>
   `,
 })
-export class TreeEditDialogComponent implements OnChanges {
+export class TreeEditDialogComponent implements OnChanges, OnInit {
   @Input() tree: Tree | null = null;
   @Input() visible = false;
   @Output() visibleChange = new EventEmitter<boolean>();
-  @Output() treeSaved = new EventEmitter<void>();
+  @Output() treeSaved = new EventEmitter<Partial<Tree>>();
 
   treeForm: FormGroup;
   metricForm: FormGroup;
@@ -300,6 +300,7 @@ export class TreeEditDialogComponent implements OnChanges {
   metricFiles: File[] = [];
 
   speciesOptions: { label: string; value: string }[] = [];
+  private speciesList: Species[] = [];
   surveyAreaOptions: { label: string; value: string }[] = [];
 
   conditions = [
@@ -351,12 +352,20 @@ export class TreeEditDialogComponent implements OnChanges {
       recordedAt: [new Date()],
     });
 
+  }
+
+  ngOnInit(): void {
     this.treeService.getSpecies().subscribe({
       next: (species: Species[]) => {
+        this.speciesList = species;
         this.speciesOptions = species.map((s) => ({
           label: `${s.commonName} (${s.scientificName})`,
           value: s.id,
         }));
+        // Re-apply value in case dialog was already open when options arrived
+        if (this.tree && this.visible) {
+          this.treeForm.patchValue({ speciesId: this.tree.speciesId });
+        }
       },
       error: () => {},
     });
@@ -364,6 +373,9 @@ export class TreeEditDialogComponent implements OnChanges {
     this.surveyAreasService.getAll().subscribe({
       next: (areas: SurveyArea[]) => {
         this.surveyAreaOptions = areas.map((a) => ({ label: a.name, value: a.id }));
+        if (this.tree && this.visible) {
+          this.treeForm.patchValue({ surveyAreaId: this.tree.surveyAreaId ?? null });
+        }
       },
       error: () => {},
     });
@@ -396,10 +408,23 @@ export class TreeEditDialogComponent implements OnChanges {
     if (!payload.surveyAreaId) payload.surveyAreaId = null;
 
     this.treeService.update(this.tree.id, payload).subscribe({
-      next: () => {
+      next: (updatedTree: Tree) => {
         this.messageService.add({ severity: 'success', summary: 'Saved', detail: 'Tree details updated' });
         this.savingTree = false;
-        this.treeSaved.emit();
+        const selectedSpecies = this.speciesList.find(s => s.id === payload.speciesId);
+        const enriched: Partial<Tree> = {
+          ...updatedTree,
+          speciesId: payload.speciesId,
+          surveyAreaId: payload.surveyAreaId ?? null,
+          xCoordinate: payload.xCoordinate,
+          yCoordinate: payload.yCoordinate,
+          zCoordinate: payload.zCoordinate,
+          yearOfPlantation: payload.yearOfPlantation,
+          commonName: selectedSpecies?.commonName ?? updatedTree.commonName,
+          scientificName: selectedSpecies?.scientificName ?? updatedTree.scientificName,
+          species: selectedSpecies ?? updatedTree.species,
+        };
+        this.treeSaved.emit(enriched);
         this.onHide();
       },
       error: (err) => {

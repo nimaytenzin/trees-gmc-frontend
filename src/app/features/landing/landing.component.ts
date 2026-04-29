@@ -15,8 +15,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { TreeService } from '../trees/services/tree.service';
 import { Tree } from '../../core/models/tree.model';
 import { GrowthMetric } from '../../core/models/growth-metric.model';
-import * as L from 'leaflet';
-import 'leaflet.markercluster';
+import maplibregl from 'maplibre-gl';
 import { sarpangTmToWgs84 } from '../../core/utils/crs';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
@@ -30,7 +29,23 @@ import { environment } from '../../../environments';
 import { AccordionModule } from 'primeng/accordion';
 import { GalleriaModule } from 'primeng/galleria';
 
-/** Primary theme colour for charts (no grids). */
+const POSITRON_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+
+const SATELLITE_STYLE: any = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      attribution: '© Esri',
+    },
+  },
+  layers: [{ id: 'satellite-bg', type: 'raster', source: 'satellite' }],
+};
+
 const CHART_PRIMARY = '#00563E';
 
 @Component({
@@ -57,53 +72,43 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly appName = APP_NAME;
   assessmentsActiveIndex: number | number[] = 0;
-  /** Display common name: from tree or species. */
+
   get displayCommonName(): string {
     const t = this.selectedTree;
     return t?.commonName ?? t?.species?.commonName ?? t?.treeId ?? '—';
   }
-  /** Display scientific name: from tree or species. */
   get displayScientificName(): string {
     const t = this.selectedTree;
     return t?.scientificName ?? t?.species?.scientificName ?? '—';
   }
-  /** Condition for Health section: from latest growth metric. */
   get displayCondition(): string | undefined {
     return this.latestMetric?.healthCondition ?? this.latestMetric?.condition ?? undefined;
   }
-  /** Height trend for sparkline (oldest to newest), primary colour. */
   get sparklineData(): number[] {
     if (!this.selectedTree?.growthMetrics?.length) return [];
     return [...this.selectedTree.growthMetrics].reverse().map((m) => m.heightM);
   }
-
-  /** DBH trend for sparkline (oldest to newest). */
   get sparklineDbhData(): number[] {
     if (!this.selectedTree?.growthMetrics?.length) return [];
     return [...this.selectedTree.growthMetrics].reverse().map((m) => m.dbhM);
   }
-
-  /** Canopy trend for sparkline (oldest to newest). */
   get sparklineCanopyData(): number[] {
     if (!this.selectedTree?.growthMetrics?.length) return [];
     return [...this.selectedTree.growthMetrics].reverse().map((m) => m.canopySpreadM);
   }
   readonly chartPrimary = CHART_PRIMARY;
 
-  /** Resolves asset icon path so it works from any route (dev and prod). */
   iconPath(filename: string): string {
-    const base = typeof document !== 'undefined' && document.querySelector('base')?.href?.replace(/\/$/, '') || '';
+    const base =
+      (typeof document !== 'undefined' && document.querySelector('base')?.href?.replace(/\/$/, '')) || '';
     return `${base}/assets/icons/${filename}`;
   }
 
-  /** Builds full API URL (for images like /uploads/...) */
   apiUrl(path: string): string {
     if (!path) return '';
-    // If already absolute, return as-is
     if (/^https?:\/\//i.test(path)) return path;
     const base = environment.apiBaseUrl.replace(/\/$/, '');
-    const cleaned = path.startsWith('/') ? path : `/${path}`;
-    return `${base}${cleaned}`;
+    return `${base}${path.startsWith('/') ? path : '/' + path}`;
   }
 
   totalTrees = 0;
@@ -121,7 +126,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoggedIn = false;
   currentLayer: 'positron' | 'satellite' = 'positron';
 
-  // --- Map filters (public) ---
   selectedSpeciesId: string | null = null;
   speciesOptions: { label: string; value: string }[] = [];
   numericOpOptions: { label: string; value: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' }[] = [
@@ -137,14 +141,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   dbhValue: number | null = null;
   canopyOp: 'eq' | 'gt' | 'gte' | 'lt' | 'lte' = 'eq';
   canopyValue: number | null = null;
-  private mapFilterTimeout: any;
+  private mapFilterTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  private map: L.Map | null = null;
-  private positronLayer!: L.TileLayer;
-  private satelliteLayer!: L.TileLayer;
-  private markersLayer: L.LayerGroup | null = null;
-  private markersByTreeId = new Map<string, L.Marker>();
-  private selectedTreeMapId: string | null = null;
+  private map: maplibregl.Map | null = null;
+  private selectedTreeId: string | null = null;
+  private lastGeoJSON: any = { type: 'FeatureCollection', features: [] };
 
   constructor(
     private readonly router: Router,
@@ -159,10 +160,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.treeService.getPublicSpecies().subscribe({
       next: (species: Species[]) => {
         this.speciesOptions = species
-          .map((s) => ({
-            label: `${s.commonName} (${s.scientificName})`,
-            value: s.id,
-          }))
+          .map((s) => ({ label: `${s.commonName} (${s.scientificName})`, value: s.id }))
           .sort((a, b) => a.label.localeCompare(b.label));
       },
       error: () => {},
@@ -185,7 +183,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.initMap();
-    this.loadMapTrees();
   }
 
   ngOnDestroy(): void {
@@ -195,59 +192,186 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private initMap(): void {
     if (!this.mapContainer?.nativeElement) return;
-    const map = L.map(this.mapContainer.nativeElement, {
-      center: [26.8516, 90.5042],
+
+    this.map = new maplibregl.Map({
+      container: this.mapContainer.nativeElement,
+      style: POSITRON_STYLE,
+      center: [90.5042, 26.8516],
       zoom: 13,
-      zoomControl: false,
+      attributionControl: false,
     });
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    this.positronLayer = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      { attribution: '&copy; CARTO, OSM', maxZoom: 19 },
-    );
-    this.satelliteLayer = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { attribution: '&copy; Esri', maxZoom: 19 },
-    );
-    this.positronLayer.addTo(map);
-    this.map = map;
+    this.map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    this.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
 
-    // Close sidebar when clicking on the map (not on a marker)
-    map.on('click', () => {
-      this.ngZone.run(() => this.closeSidebar());
+    this.map.on('load', () => {
+      this.addTreeLayers();
+      this.loadMapTrees();
+    });
+
+    this.map.on('click', (e) => {
+      const features = this.map!.queryRenderedFeatures(e.point, { layers: ['trees-dots'] });
+      if (features.length > 0) {
+        const props = features[0].properties as any;
+        this.ngZone.run(() => this.selectTreeById(props['id'], props));
+      } else {
+        this.ngZone.run(() => this.closeSidebar());
+      }
+    });
+
+    this.map.on('mouseenter', 'trees-dots', () => {
+      if (this.map) this.map.getCanvas().style.cursor = 'pointer';
+    });
+    this.map.on('mouseleave', 'trees-dots', () => {
+      if (this.map) this.map.getCanvas().style.cursor = '';
     });
   }
 
-  private addMarkers(trees: Tree[]): void {
+  private addTreeLayers(): void {
     if (!this.map) return;
-    if (this.markersLayer) {
-      this.map.removeLayer(this.markersLayer);
+
+    if (!this.map.getSource('trees')) {
+      this.map.addSource('trees', { type: 'geojson', data: this.lastGeoJSON });
     }
-    this.markersLayer = L.layerGroup();
-    this.markersByTreeId.clear();
-    trees.forEach((tree) => {
-      const { lat, lng } = sarpangTmToWgs84(Number(tree.xCoordinate), Number(tree.yCoordinate));
-      const marker = L.marker([lat, lng], {
-        icon: this.buildTreeIcon(this.selectedTreeMapId === tree.id),
+
+    if (!this.map.getLayer('trees-dots')) {
+      this.map.addLayer({
+        id: 'trees-dots',
+        type: 'circle',
+        source: 'trees',
+        paint: {
+          'circle-radius': 5,
+          'circle-color': '#2D5016',
+          'circle-opacity': 0.85,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#ffffff',
+        },
       });
-      marker.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        this.ngZone.run(() => this.selectTree(tree));
+    }
+
+    if (!this.map.getLayer('trees-selected')) {
+      this.map.addLayer({
+        id: 'trees-selected',
+        type: 'circle',
+        source: 'trees',
+        filter: ['==', ['get', 'id'], ''],
+        paint: {
+          'circle-radius': 9,
+          'circle-color': '#2D5016',
+          'circle-opacity': 0.95,
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#1e40af',
+        },
       });
-      this.markersLayer!.addLayer(marker);
-      this.markersByTreeId.set(tree.id, marker);
-    });
-    this.map.addLayer(this.markersLayer);
-    if (trees.length > 0) {
-      const bounds = L.latLngBounds(
-        trees.map((t) => {
-          const { lat, lng } = sarpangTmToWgs84(Number(t.xCoordinate), Number(t.yCoordinate));
-          return [lat, lng] as L.LatLngTuple;
-        }),
+    }
+
+    if (this.lastGeoJSON.features.length > 0) {
+      (this.map.getSource('trees') as maplibregl.GeoJSONSource).setData(this.lastGeoJSON);
+    }
+    if (this.selectedTreeId) {
+      this.map.setFilter('trees-selected', ['==', ['get', 'id'], this.selectedTreeId]);
+    }
+  }
+
+  private buildGeoJSON(trees: Tree[]): any {
+    const features: any[] = [];
+    for (const tree of trees) {
+      const { lat, lng } = sarpangTmToWgs84(
+        Number(tree.xCoordinate),
+        Number(tree.yCoordinate),
       );
-      this.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      if (
+        !isFinite(lat) || !isFinite(lng) ||
+        lat < -90 || lat > 90 ||
+        lng < -180 || lng > 180
+      ) {
+        continue;
+      }
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lng, lat] },
+        properties: {
+          id: tree.id,
+          treeId: tree.treeId,
+          commonName: tree.commonName ?? (tree as any).species?.commonName ?? '',
+          scientificName: tree.scientificName ?? (tree as any).species?.scientificName ?? '',
+        },
+      });
     }
+    return { type: 'FeatureCollection', features };
+  }
+
+  private renderTrees(trees: Tree[]): void {
+    const geojson = this.buildGeoJSON(trees);
+    this.lastGeoJSON = geojson;
+
+    if (!this.map || !this.map.isStyleLoaded()) return;
+
+    const src = this.map.getSource('trees') as maplibregl.GeoJSONSource | undefined;
+    if (src) src.setData(geojson);
+
+    if (geojson.features.length > 0) {
+      const coords: [number, number][] = geojson.features.map(
+        (f: any) => f.geometry.coordinates as [number, number],
+      );
+      const bounds = coords.reduce(
+        (b: maplibregl.LngLatBounds, c: [number, number]) => b.extend(c),
+        new maplibregl.LngLatBounds(coords[0], coords[0]),
+      );
+      this.map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 800 });
+    }
+  }
+
+  setLayer(layer: 'positron' | 'satellite'): void {
+    if (!this.map) return;
+    this.currentLayer = layer;
+    this.map.setStyle(layer === 'positron' ? POSITRON_STYLE : SATELLITE_STYLE);
+    this.map.once('styledata', () => this.addTreeLayers());
+  }
+
+  closeSidebar(): void {
+    this.selectedTree = null;
+    this.selectedTreePhoto = null;
+    this.latestMetric = null;
+    this.metricsGalleryVisible = false;
+    this.metricsGalleryImages = [];
+    this.selectedTreeId = null;
+    if (this.map?.getLayer('trees-selected')) {
+      this.map.setFilter('trees-selected', ['==', ['get', 'id'], '']);
+    }
+  }
+
+  private selectTreeById(id: string, basicProps: any): void {
+    this.selectedTreeId = id;
+    if (this.map?.getLayer('trees-selected')) {
+      this.map.setFilter('trees-selected', ['==', ['get', 'id'], id]);
+    }
+    this.isFavorited = false;
+    this.treeService.getPublicTree(id).subscribe({
+      next: (full) => {
+        this.selectedTree = full;
+        this.latestMetric = full.growthMetrics?.[0] ?? null;
+        this.selectedTreePhoto = this.latestMetric?.photos?.[0]?.url ?? null;
+      },
+      error: () => {
+        this.selectedTree = {
+          id,
+          treeId: basicProps['treeId'],
+          commonName: basicProps['commonName'],
+          scientificName: basicProps['scientificName'],
+        } as any;
+        this.latestMetric = null;
+        this.selectedTreePhoto = null;
+      },
+    });
+  }
+
+  selectTree(tree: Tree): void {
+    this.selectTreeById(tree.id, {
+      treeId: tree.treeId,
+      commonName: tree.commonName ?? (tree as any).species?.commonName ?? '',
+      scientificName: tree.scientificName ?? (tree as any).species?.scientificName ?? '',
+    });
   }
 
   clearMapFilters(): void {
@@ -262,112 +386,59 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onMapFilterInput(): void {
-    clearTimeout(this.mapFilterTimeout);
+    if (this.mapFilterTimeout != null) clearTimeout(this.mapFilterTimeout);
     this.mapFilterTimeout = setTimeout(() => this.loadMapTrees(), 300);
   }
 
   loadMapTrees(): void {
     this.closeSidebar();
-    this.treeService
-      .getPublicTrees({
-        speciesId: this.selectedSpeciesId || undefined,
-        heightOp: this.heightOp || undefined,
-        heightValue: this.heightValue ?? undefined,
-        dbhOp: this.dbhOp || undefined,
-        dbhValue: this.dbhValue ?? undefined,
-        canopyOp: this.canopyOp || undefined,
-        canopyValue: this.canopyValue ?? undefined,
-        page: 1,
-        limit: 10000,
-      })
-      .subscribe({
-        next: (res) => {
-          this.mapTrees = res.items;
-          this.addMarkers(res.items);
-        },
-        error: () => {},
-      });
-  }
 
-  private buildTreeIcon(isSelected: boolean): L.DivIcon {
-    return L.divIcon({
-      className: `custom-tree-marker${isSelected ? ' is-selected' : ''}`,
-      html: '<div class="tree-marker-pin"></div>',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-    });
-  }
+    const hasFilters =
+      !!this.selectedSpeciesId ||
+      this.heightValue != null ||
+      this.dbhValue != null ||
+      this.canopyValue != null;
 
-  private setSelectedMarker(treeId: string | null): void {
-    if (this.selectedTreeMapId && this.selectedTreeMapId !== treeId) {
-      const prev = this.markersByTreeId.get(this.selectedTreeMapId);
-      if (prev) prev.setIcon(this.buildTreeIcon(false));
-    }
-
-    this.selectedTreeMapId = treeId;
-
-    if (treeId) {
-      const next = this.markersByTreeId.get(treeId);
-      if (next) next.setIcon(this.buildTreeIcon(true));
-    }
-  }
-
-  toggleLayer(): void {
-    this.setLayer(this.currentLayer === 'positron' ? 'satellite' : 'positron');
-  }
-
-  setLayer(layer: 'positron' | 'satellite'): void {
-    if (!this.map) return;
-    this.currentLayer = layer;
-    if (layer === 'positron') {
-      this.map.removeLayer(this.satelliteLayer);
-      this.positronLayer.addTo(this.map);
+    if (hasFilters) {
+      this.treeService
+        .getPublicTrees({
+          speciesId: this.selectedSpeciesId || undefined,
+          heightOp: this.heightOp || undefined,
+          heightValue: this.heightValue ?? undefined,
+          dbhOp: this.dbhOp || undefined,
+          dbhValue: this.dbhValue ?? undefined,
+          canopyOp: this.canopyOp || undefined,
+          canopyValue: this.canopyValue ?? undefined,
+          page: 1,
+          limit: 10000,
+        })
+        .subscribe({
+          next: (res) => {
+            this.mapTrees = res.items;
+            this.renderTrees(res.items);
+          },
+          error: () => {
+            this.mapTrees = [];
+            this.renderTrees([]);
+          },
+        });
     } else {
-      this.map.removeLayer(this.positronLayer);
-      this.satelliteLayer.addTo(this.map);
+      this.treeService.getPublicTreesForMap().subscribe({
+        next: (items) => {
+          this.mapTrees = items;
+          this.renderTrees(items);
+        },
+        error: () => {
+          this.mapTrees = [];
+          this.renderTrees([]);
+        },
+      });
     }
-  }
-
-  closeSidebar(): void {
-    this.selectedTree = null;
-    this.selectedTreePhoto = null;
-    this.latestMetric = null;
-    this.metricsGalleryVisible = false;
-    this.metricsGalleryImages = [];
-    this.setSelectedMarker(null);
-  }
-
-  selectTree(tree: Tree): void {
-    // Fetch full tree (includes growthMetrics + photos)
-    this.isFavorited = false;
-    this.setSelectedMarker(tree.id);
-    this.treeService.getPublicTree(tree.id).subscribe({
-      next: (full) => {
-        this.selectedTree = full;
-        this.latestMetric =
-          full.growthMetrics && full.growthMetrics.length > 0 ? full.growthMetrics[0] : null;
-
-        this.selectedTreePhoto = null;
-        if (this.latestMetric?.photos && this.latestMetric.photos.length > 0) {
-          this.selectedTreePhoto = this.latestMetric.photos[0].url;
-        }
-      },
-      error: () => {
-        // Fallback to partial tree so UI still shows something
-        this.selectedTree = tree;
-        this.latestMetric =
-          tree.growthMetrics && tree.growthMetrics.length > 0 ? tree.growthMetrics[0] : null;
-        this.selectedTreePhoto = null;
-      },
-    });
   }
 
   openMetricsGallery(photos?: any[] | null): void {
     const raw = photos ?? [];
-    this.metricsGalleryImages = raw.map((p) => ({
-      ...p,
-      url: this.apiUrl(p.url),
-    }));
+    this.metricsGalleryImages = raw.map((p) => ({ ...p, url: this.apiUrl(p.url) }));
     this.metricsGalleryVisible = this.metricsGalleryImages.length > 0;
   }
 
@@ -377,43 +448,26 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.treeService.getPublicTrees({ search: this.searchQuery, limit: 10 }).subscribe({
-      next: (res) => {
-        this.searchResults = res.items;
-      },
-      error: () => {
-        this.searchResults = [];
-      },
+      next: (res) => { this.searchResults = res.items; },
+      error: () => { this.searchResults = []; },
     });
   }
 
   navigateToMap(): void {
-    if (this.isLoggedIn) {
-      this.router.navigate(['/app/map']);
-    } else {
-      this.router.navigate(['/login']);
-    }
+    this.router.navigate(this.isLoggedIn ? ['/app/map'] : ['/login']);
   }
-
   navigateToRegistry(): void {
-    if (this.isLoggedIn) {
-      this.router.navigate(['/app/dashboard']);
-    } else {
-      this.router.navigate(['/login']);
-    }
+    this.router.navigate(this.isLoggedIn ? ['/app/dashboard'] : ['/login']);
   }
-
   scrollToMap(): void {
     document.querySelector('#mapArea')?.scrollIntoView({ behavior: 'smooth' });
   }
-
   scrollToSidebar(): void {
     document.querySelector('aside')?.scrollIntoView({ behavior: 'smooth' });
   }
-
   toggleFavorite(): void {
     this.isFavorited = !this.isFavorited;
   }
-
   shareTree(): void {
     if (this.selectedTree && navigator.share) {
       navigator.share({
@@ -423,13 +477,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
   }
-
   reportConcern(): void {
-    if (this.isLoggedIn) {
-      this.router.navigate(['/app/trees/growth-metric']);
-    } else {
-      this.router.navigate(['/login']);
-    }
+    this.router.navigate(this.isLoggedIn ? ['/app/trees/growth-metric'] : ['/login']);
   }
 
   getConditionBadgeClass(condition: string): string {
@@ -441,7 +490,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       default: return 'bg-slate-400 text-white';
     }
   }
-
   getConditionPanelClass(condition: string): string {
     switch (condition) {
       case 'Good': return 'bg-primary/10 border border-primary/20';
@@ -451,7 +499,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       default: return 'bg-slate-50 border border-slate-200';
     }
   }
-
   getConditionDotClass(condition: string): string {
     switch (condition) {
       case 'Good': return 'bg-primary';
@@ -461,7 +508,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       default: return 'bg-slate-400';
     }
   }
-
   getConditionIconClass(condition: string): string {
     switch (condition) {
       case 'Good': return 'text-primary';
@@ -471,7 +517,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       default: return 'text-slate-400';
     }
   }
-
   getConditionLabel(condition: string): string {
     if (!condition) return '—';
     switch (condition) {

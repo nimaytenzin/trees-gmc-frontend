@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  NgZone,
   OnDestroy,
   ViewChild,
 } from '@angular/core';
@@ -12,7 +13,22 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { SurveyAreasService } from '../../../core/services/survey-areas.service';
 import { SurveyArea } from '../../../core/models/survey-area.model';
-import * as L from 'leaflet';
+import maplibregl from 'maplibre-gl';
+
+const POSITRON_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+
+const SATELLITE_STYLE: any = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: '© Esri',
+    },
+  },
+  layers: [{ id: 'satellite-bg', type: 'raster', source: 'satellite' }],
+};
 
 @Component({
   selector: 'app-survey-area-select',
@@ -28,21 +44,19 @@ export class SurveyAreaSelectComponent implements AfterViewInit, OnDestroy {
   loading = false;
   selected: SurveyArea | null = null;
   locating = false;
-
-  private map: L.Map | null = null;
-  private baseLayer!: L.TileLayer;
-  private satelliteLayer!: L.TileLayer;
   currentLayer: 'street' | 'satellite' = 'street';
-  private areasLayer: L.GeoJSON | null = null;
+
+  private map: maplibregl.Map | null = null;
+  private lastGeoJSON: any = { type: 'FeatureCollection', features: [] };
 
   constructor(
     private readonly surveyAreasService: SurveyAreasService,
     private readonly router: Router,
+    private readonly ngZone: NgZone,
   ) {}
 
   ngAfterViewInit(): void {
     this.initMap();
-    this.loadAreas();
   }
 
   ngOnDestroy(): void {
@@ -64,7 +78,8 @@ export class SurveyAreaSelectComponent implements AfterViewInit, OnDestroy {
 
   select(area: SurveyArea): void {
     this.selected = area;
-    this.highlightSelected(true);
+    this.renderAllAreas();
+    this.zoomToArea(area);
   }
 
   continue(): void {
@@ -81,162 +96,191 @@ export class SurveyAreaSelectComponent implements AfterViewInit, OnDestroy {
   toggleLayer(): void {
     if (!this.map) return;
     this.currentLayer = this.currentLayer === 'street' ? 'satellite' : 'street';
-    if (this.currentLayer === 'street') {
-      this.map.removeLayer(this.satelliteLayer);
-      this.baseLayer.addTo(this.map);
-    } else {
-      this.map.removeLayer(this.baseLayer);
-      this.satelliteLayer.addTo(this.map);
-    }
+    this.map.setStyle(this.currentLayer === 'street' ? POSITRON_STYLE : SATELLITE_STYLE);
+    this.map.once('styledata', () => this.addAreaLayers());
   }
 
   zoomToAll(): void {
-    if (!this.map || !this.areasLayer) return;
-    try {
-      const bounds = this.areasLayer.getBounds();
-      if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [24, 24] });
-    } catch {
-      // ignore
+    if (!this.map) return;
+    const bounds = new maplibregl.LngLatBounds();
+    let hasCoords = false;
+    for (const f of this.lastGeoJSON.features) {
+      if (f.geometry) { this.extendBounds(bounds, f.geometry); hasCoords = true; }
     }
+    if (hasCoords) try { this.map.fitBounds(bounds, { padding: 24 }); } catch {}
   }
 
   locateMe(): void {
-    if (!this.map) return;
     if (!navigator.geolocation) {
       alert('Geolocation is not supported in this browser.');
       return;
     }
     this.locating = true;
-    // Use Leaflet's locate to integrate with map events
-    this.map.locate({ enableHighAccuracy: true, timeout: 8000 });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.ngZone.run(() => {
+          this.locating = false;
+          if (!this.map) return;
+          const { longitude: lng, latitude: lat } = pos.coords;
+          this.map.flyTo({ center: [lng, lat], zoom: 17 });
+
+          const locationData: any = {
+            type: 'FeatureCollection',
+            features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: {} }],
+          };
+          const src = this.map.getSource('user-location') as maplibregl.GeoJSONSource | undefined;
+          if (src) {
+            src.setData(locationData);
+          } else if (this.map.isStyleLoaded()) {
+            this.map.addSource('user-location', { type: 'geojson', data: locationData });
+            this.map.addLayer({
+              id: 'user-location-dot',
+              type: 'circle',
+              source: 'user-location',
+              paint: {
+                'circle-radius': 8,
+                'circle-color': '#22c55e',
+                'circle-opacity': 0.85,
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#00563E',
+              },
+            });
+          }
+        });
+      },
+      () => {
+        this.ngZone.run(() => {
+          this.locating = false;
+          alert('Unable to access your location. Please check browser permissions.');
+        });
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
   }
 
   private initMap(): void {
     if (!this.mapContainer?.nativeElement) return;
-    const map = L.map(this.mapContainer.nativeElement, {
-      center: [26.8516, 90.5042],
+
+    this.map = new maplibregl.Map({
+      container: this.mapContainer.nativeElement,
+      style: POSITRON_STYLE,
+      center: [90.5042, 26.8516],
       zoom: 13,
-      zoomControl: false,
-    });
-    this.baseLayer = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      { attribution: '&copy; CARTO, OSM', maxZoom: 19 },
-    );
-    this.satelliteLayer = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { attribution: '&copy; Esri', maxZoom: 19 },
-    );
-    this.baseLayer.addTo(map);
-
-    map.on('locationfound', (e: L.LocationEvent) => {
-      this.locating = false;
-      const latlng = e.latlng;
-      map.setView(latlng, 17);
-      L.circleMarker(latlng, {
-        radius: 6,
-        color: '#00563E',
-        fillColor: '#22c55e',
-        fillOpacity: 0.7,
-      }).addTo(map);
-    });
-    map.on('locationerror', () => {
-      this.locating = false;
-      alert('Unable to access your location. Please check browser permissions.');
+      attributionControl: false,
     });
 
-    this.map = map;
+    this.map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    this.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+
+    this.map.on('load', () => {
+      this.addAreaLayers();
+      this.loadAreas();
+    });
+  }
+
+  private addAreaLayers(): void {
+    if (!this.map) return;
+
+    if (!this.map.getSource('areas')) {
+      this.map.addSource('areas', { type: 'geojson', data: this.lastGeoJSON });
+    }
+
+    if (!this.map.getLayer('areas-fill')) {
+      this.map.addLayer({
+        id: 'areas-fill',
+        type: 'fill',
+        source: 'areas',
+        paint: {
+          'fill-color': ['get', '__color'] as any,
+          'fill-opacity': ['case', ['get', '__selected'], 0.18, 0.10] as any,
+        },
+      });
+    }
+
+    if (!this.map.getLayer('areas-line')) {
+      this.map.addLayer({
+        id: 'areas-line',
+        type: 'line',
+        source: 'areas',
+        paint: {
+          'line-color': ['get', '__color'] as any,
+          'line-width': ['case', ['get', '__selected'], 4, 2] as any,
+          'line-opacity': 0.95,
+        },
+      });
+    }
+
+    // Restore data after style switch
+    if (this.lastGeoJSON.features.length > 0) {
+      (this.map.getSource('areas') as maplibregl.GeoJSONSource).setData(this.lastGeoJSON);
+    }
+
+    this.map.on('click', 'areas-fill', (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+      const id = feature.properties?.['__id'] as string | undefined;
+      const area = id ? this.areas.find((a) => a.id === id) : undefined;
+      if (area) this.ngZone.run(() => this.select(area));
+    });
+
+    this.map.on('mouseenter', 'areas-fill', () => {
+      if (this.map) this.map.getCanvas().style.cursor = 'pointer';
+    });
+    this.map.on('mouseleave', 'areas-fill', () => {
+      if (this.map) this.map.getCanvas().style.cursor = '';
+    });
   }
 
   private renderAllAreas(): void {
-    if (!this.map) return;
-    if (this.areasLayer) this.map.removeLayer(this.areasLayer);
+    if (!this.map || !this.map.isStyleLoaded()) return;
 
-    const collection: any = {
-      type: 'FeatureCollection',
-      features: this.areas.map((a) => {
-        const g: any = a.geom;
-        if (g?.type === 'FeatureCollection') {
-          const first = g.features?.[0];
-          return {
-            ...(first ?? { type: 'Feature', geometry: null, properties: {} }),
-            properties: { ...(first?.properties ?? {}), __id: a.id, __name: a.name },
-          };
-        }
-        if (g?.type === 'Feature') {
-          return {
-            ...g,
-            properties: { ...(g.properties ?? {}), __id: a.id, __name: a.name },
-          };
-        }
-        return { type: 'Feature', geometry: g, properties: { __id: a.id, __name: a.name } };
-      }),
-    };
-
-    const layer = L.geoJSON(collection, {
-      style: (feature: any) => {
-        const id = feature?.properties?.__id as string | undefined;
-        const color = this.colorForId(id ?? '');
-        const isSelected = !!id && id === this.selected?.id;
-        return {
-          color,
-          weight: isSelected ? 4 : 2,
-          opacity: 0.95,
-          fillColor: color,
-          fillOpacity: isSelected ? 0.18 : 0.10,
-        };
-      },
-      onEachFeature: (feature: any, featureLayer: any) => {
-        const id = feature?.properties?.__id as string | undefined;
-        const name = (feature?.properties?.__name as string | undefined) ?? 'Survey area';
-        featureLayer.on('click', () => {
-          const area = this.areas.find((a) => a.id === id);
-          if (area) this.select(area);
-        });
-        featureLayer.bindTooltip(name, { sticky: true, direction: 'top', opacity: 0.9 });
-      },
+    const features = this.areas.map((a) => {
+      const g: any = a.geom;
+      const color = this.colorForId(a.id);
+      const isSelected = a.id === this.selected?.id;
+      let geometry: any = null;
+      if (g?.type === 'FeatureCollection') geometry = g.features?.[0]?.geometry ?? null;
+      else if (g?.type === 'Feature') geometry = g.geometry;
+      else geometry = g;
+      return { type: 'Feature', geometry, properties: { __id: a.id, __name: a.name, __color: color, __selected: isSelected } };
     });
 
-    layer.addTo(this.map);
-    this.areasLayer = layer;
+    const collection = { type: 'FeatureCollection', features };
+    this.lastGeoJSON = collection;
 
-    try {
-      const bounds = layer.getBounds();
-      if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [24, 24] });
-    } catch {
-      // ignore
+    const src = this.map.getSource('areas') as maplibregl.GeoJSONSource | undefined;
+    if (src) src.setData(collection as any);
+
+    if (!this.selected && features.length > 0) {
+      const bounds = new maplibregl.LngLatBounds();
+      let hasCoords = false;
+      for (const f of features) {
+        if (f.geometry) { this.extendBounds(bounds, f.geometry); hasCoords = true; }
+      }
+      if (hasCoords) try { this.map.fitBounds(bounds, { padding: 24, duration: 800 }); } catch {}
     }
   }
 
-  private highlightSelected(zoomToSelected = false): void {
-    if (!this.map || !this.areasLayer) return;
-    this.areasLayer.setStyle((feature: any) => {
-      const id = feature?.properties?.__id as string | undefined;
-      const color = this.colorForId(id ?? '');
-      const isSelected = !!id && id === this.selected?.id;
-      return {
-        color,
-        weight: isSelected ? 4 : 2,
-        opacity: 0.95,
-        fillColor: color,
-        fillOpacity: isSelected ? 0.18 : 0.10,
-      };
-    });
+  private zoomToArea(area: SurveyArea): void {
+    if (!this.map) return;
+    const g: any = area.geom;
+    let geometry: any = null;
+    if (g?.type === 'FeatureCollection') geometry = g.features?.[0]?.geometry ?? null;
+    else if (g?.type === 'Feature') geometry = g.geometry;
+    else geometry = g;
+    if (!geometry) return;
+    const bounds = new maplibregl.LngLatBounds();
+    this.extendBounds(bounds, geometry);
+    try { if (!bounds.isEmpty()) this.map.fitBounds(bounds, { padding: 24, duration: 500 }); } catch {}
+  }
 
-    if (zoomToSelected && this.selected) {
-      try {
-        const selectedId = this.selected.id;
-        let targetLayer: any = null;
-        this.areasLayer.eachLayer((l: any) => {
-          if (l?.feature?.properties?.__id === selectedId) targetLayer = l;
-        });
-        if (targetLayer?.getBounds) {
-          const bounds = targetLayer.getBounds();
-          if (bounds?.isValid?.()) this.map.fitBounds(bounds, { padding: [24, 24] });
-        }
-      } catch {
-        // ignore
-      }
-    }
+  private extendBounds(bounds: maplibregl.LngLatBounds, geometry: any): void {
+    if (!geometry?.coordinates) return;
+    const walk = (coords: any): void => {
+      if (typeof coords[0] === 'number') bounds.extend(coords as [number, number]);
+      else for (const c of coords) walk(c);
+    };
+    walk(geometry.coordinates);
   }
 
   private colorForId(id: string): string {
@@ -246,4 +290,3 @@ export class SurveyAreaSelectComponent implements AfterViewInit, OnDestroy {
     return palette[hash % palette.length];
   }
 }
-

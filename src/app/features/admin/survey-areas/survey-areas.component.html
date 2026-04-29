@@ -148,6 +148,27 @@
 
         <div class="map-frame">
           <div #mapContainer class="map-container"></div>
+
+          @if (areas.length > 0) {
+            <div class="survey-legend-overlay">
+              <div class="survey-legend">
+                <div class="survey-legend__title">Survey areas</div>
+                <div class="survey-legend__items">
+                  @for (area of areas; track area.id) {
+                    <div
+                      class="survey-legend__item"
+                      [class.survey-legend__item--active]="area.id === selectedArea?.id"
+                      (click)="selectArea(area)"
+                    >
+                      <span class="survey-legend__swatch" [style.background]="colorForId(area.id)"></span>
+                      <span class="survey-legend__name">{{ area.name }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
           @if (!selectedArea) {
             <div class="map-empty">
               <div class="text-center">

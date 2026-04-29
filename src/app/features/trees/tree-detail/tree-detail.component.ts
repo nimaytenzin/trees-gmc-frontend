@@ -57,7 +57,7 @@ import { TreeEditDialogComponent } from '../../admin/tree-edit-dialog/tree-edit-
       <app-tree-edit-dialog
         [(visible)]="editTreeVisible"
         [tree]="tree"
-        (treeSaved)="reload()"
+        (treeSaved)="onTreeSaved($event)"
       />
 
       <!-- Edit Metric Dialog -->
@@ -363,6 +363,13 @@ export class TreeDetailComponent implements OnInit {
   }
 
   reload(): void {
+    this.loadTree();
+  }
+
+  onTreeSaved(partial: Partial<Tree>): void {
+    if (this.tree) {
+      this.tree = { ...this.tree, ...partial };
+    }
     this.loadTree();
   }
 

@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  NgZone,
   OnDestroy,
   ViewChild,
 } from '@angular/core';
@@ -16,7 +17,9 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { SurveyAreasService } from '../../../core/services/survey-areas.service';
 import { SurveyArea } from '../../../core/models/survey-area.model';
-import * as L from 'leaflet';
+import maplibregl from 'maplibre-gl';
+
+const POSITRON_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 @Component({
   selector: 'app-survey-areas',
@@ -38,10 +41,7 @@ import * as L from 'leaflet';
 export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
   @ViewChild('mapContainer') mapContainer!: ElementRef<HTMLDivElement>;
 
-  private map: L.Map | null = null;
-  private baseLayer!: L.TileLayer;
-  private areasLayer: L.GeoJSON | null = null;
-  private legendControl: L.Control | null = null;
+  private map: maplibregl.Map | null = null;
 
   areas: SurveyArea[] = [];
   loading = false;
@@ -62,13 +62,13 @@ export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
   constructor(
     private readonly surveyAreasService: SurveyAreasService,
     private readonly messageService: MessageService,
+    private readonly ngZone: NgZone,
   ) {
     this.load();
   }
 
   ngAfterViewInit(): void {
     this.initMap();
-    this.renderAllAreasOnMap();
   }
 
   ngOnDestroy(): void {
@@ -82,14 +82,14 @@ export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
       next: (areas) => {
         this.areas = areas;
         this.loading = false;
-        this.renderAllAreasOnMap();
+
         if (!this.selectedArea && areas.length > 0) {
-          this.selectArea(areas[0]);
+          this.selectedArea = areas[0];
         } else if (this.selectedArea) {
-          const refreshed = areas.find((a) => a.id === this.selectedArea!.id) ?? null;
-          this.selectedArea = refreshed;
-          this.highlightSelectedArea();
+          this.selectedArea = areas.find((a) => a.id === this.selectedArea!.id) ?? null;
         }
+
+        this.renderAllAreasOnMap();
       },
       error: () => (this.loading = false),
     });
@@ -138,10 +138,7 @@ export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
   async saveEdit(): Promise<void> {
     if (!this.editingArea) return;
     const name = this.editName.trim();
-    if (!name) {
-      this.editError = 'Name is required';
-      return;
-    }
+    if (!name) { this.editError = 'Name is required'; return; }
 
     this.savingEdit = true;
     this.editError = '';
@@ -169,15 +166,8 @@ export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
     this.surveyAreasService.update(this.editingArea.id, payload).subscribe({
       next: (updated) => {
         this.savingEdit = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Updated',
-          detail: 'Survey area updated',
-        });
-        // Keep selection in sync
-        if (this.selectedArea?.id === updated.id) {
-          this.selectedArea = updated;
-        }
+        this.messageService.add({ severity: 'success', summary: 'Updated', detail: 'Survey area updated' });
+        if (this.selectedArea?.id === updated.id) this.selectedArea = updated;
         this.closeEdit();
         this.load();
       },
@@ -190,7 +180,12 @@ export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
 
   selectArea(area: SurveyArea): void {
     this.selectedArea = area;
-    this.highlightSelectedArea(true);
+    this.renderAllAreasOnMap();
+    this.zoomToArea(area);
+  }
+
+  clearMap(): void {
+    this.renderAllAreasOnMap();
   }
 
   async upload(): Promise<void> {
@@ -201,21 +196,15 @@ export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
     try {
       const text = await this.file.text();
       const parsed = JSON.parse(text) as Record<string, unknown>;
-
       const type = parsed?.['type'];
       if (!type || (type !== 'FeatureCollection' && type !== 'Feature')) {
         throw new Error('GeoJSON must be a FeatureCollection or Feature.');
       }
-
       const payload = { name: this.name.trim(), geom: parsed };
       this.surveyAreasService.create(payload).subscribe({
         next: () => {
           this.uploading = false;
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Uploaded',
-            detail: 'Survey area saved successfully',
-          });
+          this.messageService.add({ severity: 'success', summary: 'Uploaded', detail: 'Survey area saved successfully' });
           this.clear();
           this.load();
         },
@@ -233,210 +222,156 @@ export class SurveyAreasComponent implements AfterViewInit, OnDestroy {
   remove(area: SurveyArea): void {
     this.surveyAreasService.remove(area.id).subscribe({
       next: () => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Deleted',
-          detail: 'Survey area removed',
-        });
-        if (this.selectedArea?.id === area.id) {
-          this.selectedArea = null;
-          this.highlightSelectedArea();
-        }
+        this.messageService.add({ severity: 'success', summary: 'Deleted', detail: 'Survey area removed' });
+        if (this.selectedArea?.id === area.id) this.selectedArea = null;
         this.load();
       },
       error: () => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to delete survey area',
-        });
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete survey area' });
       },
     });
   }
 
-  private initMap(): void {
-    if (!this.mapContainer?.nativeElement) return;
-    const map = L.map(this.mapContainer.nativeElement, {
-      center: [26.8516, 90.5042],
-      zoom: 13,
-      zoomControl: true,
-    });
-    this.baseLayer = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      { attribution: '&copy; CARTO, OSM', maxZoom: 19 },
-    );
-    this.baseLayer.addTo(map);
-    this.map = map;
-  }
-
-  clearMap(): void {
-    if (this.areasLayer && this.map) {
-      this.map.removeLayer(this.areasLayer);
-    }
-    this.areasLayer = null;
-    if (this.legendControl && this.map) {
-      this.legendControl.remove();
-    }
-    this.legendControl = null;
-  }
-
-  private renderAllAreasOnMap(): void {
-    if (!this.map) return;
-    if (this.areasLayer) this.map.removeLayer(this.areasLayer);
-    if (this.legendControl) this.legendControl.remove();
-
-    const collection: any = {
-      type: 'FeatureCollection',
-      features: this.areas.map((a) => {
-        const g: any = a.geom;
-        if (g?.type === 'FeatureCollection') {
-          const first = g.features?.[0];
-          return {
-            ...(first ?? { type: 'Feature', geometry: null, properties: {} }),
-            properties: { ...(first?.properties ?? {}), __id: a.id, __name: a.name },
-          };
-        }
-        if (g?.type === 'Feature') {
-          return {
-            ...g,
-            properties: { ...(g.properties ?? {}), __id: a.id, __name: a.name },
-          };
-        }
-        return { type: 'Feature', geometry: g, properties: { __id: a.id, __name: a.name } };
-      }),
-    };
-
-    const layer = L.geoJSON(collection, {
-      style: (feature: any) => {
-        const id = feature?.properties?.__id as string | undefined;
-        const color = this.colorForId(id ?? '');
-        const isSelected = !!id && id === this.selectedArea?.id;
-        return {
-          color,
-          weight: isSelected ? 4 : 2,
-          opacity: 0.95,
-          fillColor: color,
-          fillOpacity: isSelected ? 0.18 : 0.10,
-        };
-      },
-      onEachFeature: (feature: any, featureLayer: any) => {
-        const id = feature?.properties?.__id as string | undefined;
-        const name = (feature?.properties?.__name as string | undefined) ?? 'Survey area';
-        featureLayer.on('click', (e: any) => {
-          const area = this.areas.find((a) => a.id === id);
-          if (area) this.selectArea(area);
-          featureLayer
-            .bindPopup(`<div style="font-weight:700">${this.escapeHtml(name)}</div>`, { closeButton: true })
-            .openPopup(e.latlng);
-        });
-        featureLayer.bindTooltip(name, { sticky: true, direction: 'top', opacity: 0.9 });
-      },
-    });
-    layer.addTo(this.map);
-    this.areasLayer = layer;
-
-    try {
-      const bounds = layer.getBounds();
-      if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [24, 24] });
-    } catch {
-      // ignore bad geometries
-    }
-
-    this.legendControl = this.buildLegendControl();
-    this.legendControl.addTo(this.map);
-  }
-
-  private highlightSelectedArea(zoomToSelected = false): void {
-    if (!this.map || !this.areasLayer) return;
-    this.areasLayer.setStyle((feature: any) => {
-      const id = feature?.properties?.__id as string | undefined;
-      const color = this.colorForId(id ?? '');
-      const isSelected = !!id && id === this.selectedArea?.id;
-      return {
-        color,
-        weight: isSelected ? 4 : 2,
-        opacity: 0.95,
-        fillColor: color,
-        fillOpacity: isSelected ? 0.18 : 0.10,
-      };
-    });
-
-    if (zoomToSelected && this.selectedArea) {
-      try {
-        const selectedId = this.selectedArea.id;
-        let targetLayer: any = null;
-        this.areasLayer.eachLayer((l: any) => {
-          if (l?.feature?.properties?.__id === selectedId) targetLayer = l;
-        });
-        if (targetLayer?.getBounds) {
-          const bounds = targetLayer.getBounds();
-          if (bounds?.isValid?.()) this.map.fitBounds(bounds, { padding: [24, 24] });
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }
-
-  private buildLegendControl(): L.Control {
-    const Legend = L.Control.extend({
-      onAdd: () => {
-        const div = L.DomUtil.create('div', 'survey-legend') as HTMLDivElement;
-        div.innerHTML = `
-          <div class="survey-legend__title">Survey areas</div>
-          <div class="survey-legend__items">
-            ${this.areas
-              .map((a) => {
-                const color = this.colorForId(a.id);
-                const active = a.id === this.selectedArea?.id ? ' survey-legend__item--active' : '';
-                return `<div class="survey-legend__item${active}" data-id="${a.id}">
-                  <span class="survey-legend__swatch" style="background:${color}"></span>
-                  <span class="survey-legend__name">${this.escapeHtml(a.name)}</span>
-                </div>`;
-              })
-              .join('')}
-          </div>
-        `;
-        L.DomEvent.disableClickPropagation(div);
-        div.addEventListener('click', (e) => {
-          const el = (e.target as HTMLElement)?.closest?.('[data-id]') as HTMLElement | null;
-          const id = el?.getAttribute('data-id');
-          if (!id) return;
-          const area = this.areas.find((a) => a.id === id);
-          if (area) this.selectArea(area);
-        });
-        return div;
-      },
-    });
-
-    return new Legend({ position: 'topright' }) as L.Control;
-  }
-
-  private colorForId(id: string): string {
+  colorForId(id: string): string {
     const palette = [
-      '#00563E',
-      '#2D5016',
-      '#4A7C59',
-      '#2F6F8F',
-      '#6B7B8E',
-      '#7C3AED',
-      '#C2410C',
-      '#B91C1C',
-      '#0F766E',
-      '#1D4ED8',
+      '#00563E', '#2D5016', '#4A7C59', '#2F6F8F', '#6B7B8E',
+      '#7C3AED', '#C2410C', '#B91C1C', '#0F766E', '#1D4ED8',
     ];
     let hash = 0;
     for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
     return palette[hash % palette.length];
   }
 
+  private initMap(): void {
+    if (!this.mapContainer?.nativeElement) return;
+
+    this.map = new maplibregl.Map({
+      container: this.mapContainer.nativeElement,
+      style: POSITRON_STYLE,
+      center: [90.5042, 26.8516],
+      zoom: 13,
+      attributionControl: false,
+    });
+
+    this.map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    this.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+
+    this.map.on('load', () => {
+      this.addAreaLayers();
+      this.renderAllAreasOnMap();
+    });
+  }
+
+  private addAreaLayers(): void {
+    if (!this.map) return;
+
+    if (!this.map.getSource('areas')) {
+      this.map.addSource('areas', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+    }
+
+    if (!this.map.getLayer('areas-fill')) {
+      this.map.addLayer({
+        id: 'areas-fill',
+        type: 'fill',
+        source: 'areas',
+        paint: {
+          'fill-color': ['get', '__color'] as any,
+          'fill-opacity': ['case', ['get', '__selected'], 0.18, 0.10] as any,
+        },
+      });
+    }
+
+    if (!this.map.getLayer('areas-line')) {
+      this.map.addLayer({
+        id: 'areas-line',
+        type: 'line',
+        source: 'areas',
+        paint: {
+          'line-color': ['get', '__color'] as any,
+          'line-width': ['case', ['get', '__selected'], 4, 2] as any,
+          'line-opacity': 0.95,
+        },
+      });
+    }
+
+    this.map.on('click', 'areas-fill', (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+      const id = feature.properties?.['__id'] as string | undefined;
+      const name = feature.properties?.['__name'] as string | undefined;
+      const area = id ? this.areas.find((a) => a.id === id) : undefined;
+      if (area) this.ngZone.run(() => this.selectArea(area));
+      if (name) {
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(`<div style="font-weight:700">${this.escapeHtml(name)}</div>`)
+          .addTo(this.map!);
+      }
+    });
+
+    this.map.on('mouseenter', 'areas-fill', () => {
+      if (this.map) this.map.getCanvas().style.cursor = 'pointer';
+    });
+    this.map.on('mouseleave', 'areas-fill', () => {
+      if (this.map) this.map.getCanvas().style.cursor = '';
+    });
+  }
+
+  private renderAllAreasOnMap(): void {
+    if (!this.map || !this.map.isStyleLoaded()) return;
+
+    const features = this.areas.map((a) => {
+      const g: any = a.geom;
+      const color = this.colorForId(a.id);
+      const isSelected = a.id === this.selectedArea?.id;
+      let geometry: any = null;
+      if (g?.type === 'FeatureCollection') geometry = g.features?.[0]?.geometry ?? null;
+      else if (g?.type === 'Feature') geometry = g.geometry;
+      else geometry = g;
+      return { type: 'Feature', geometry, properties: { __id: a.id, __name: a.name, __color: color, __selected: isSelected } };
+    });
+
+    const src = this.map.getSource('areas') as maplibregl.GeoJSONSource | undefined;
+    if (src) src.setData({ type: 'FeatureCollection', features } as any);
+
+    if (!this.selectedArea && features.length > 0) {
+      const bounds = new maplibregl.LngLatBounds();
+      let hasCoords = false;
+      for (const f of features) {
+        if (f.geometry) { this.extendBounds(bounds, f.geometry); hasCoords = true; }
+      }
+      if (hasCoords) try { this.map.fitBounds(bounds, { padding: 24, duration: 500 }); } catch {}
+    }
+  }
+
+  private zoomToArea(area: SurveyArea): void {
+    if (!this.map || !this.map.isStyleLoaded()) return;
+    const g: any = area.geom;
+    let geometry: any = null;
+    if (g?.type === 'FeatureCollection') geometry = g.features?.[0]?.geometry ?? null;
+    else if (g?.type === 'Feature') geometry = g.geometry;
+    else geometry = g;
+    if (!geometry) return;
+    const bounds = new maplibregl.LngLatBounds();
+    this.extendBounds(bounds, geometry);
+    try { if (!bounds.isEmpty()) this.map.fitBounds(bounds, { padding: 24, duration: 500 }); } catch {}
+  }
+
+  private extendBounds(bounds: maplibregl.LngLatBounds, geometry: any): void {
+    if (!geometry?.coordinates) return;
+    const walk = (coords: any): void => {
+      if (typeof coords[0] === 'number') bounds.extend(coords as [number, number]);
+      else for (const c of coords) walk(c);
+    };
+    walk(geometry.coordinates);
+  }
+
   private escapeHtml(input: string): string {
     return input
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
   }
 }
-

@@ -1,6 +1,7 @@
 <div class="admin-map flex flex-col min-h-0 flex-1">
   <main class="relative flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
-    <!-- Sidebar: tree details when selected (right on desktop) -->
+
+    <!-- Tree detail sidebar (right on desktop) -->
     @if (selectedTree) {
       <aside
         class="w-full lg:w-[380px] shrink-0 bg-white border-t border-slate-200 lg:border-t-0 lg:border-l lg:border-slate-200 flex flex-col shadow-[0_-10px_30px_rgba(0,0,0,0.05)] lg:shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-10 order-first lg:order-last"
@@ -152,21 +153,31 @@
       </aside>
     }
 
-    <!-- Map area -->
+    <!-- Map -->
     <div class="relative min-h-0 flex-1 overflow-hidden" style="min-height: 90vh">
       <div #mapContainer class="absolute inset-0 w-full h-full"></div>
 
+      <!-- Loading overlay -->
+      @if (loadingMap) {
+        <div class="absolute inset-0 z-[500] flex items-center justify-center bg-white/50 backdrop-blur-sm pointer-events-none">
+          <div class="flex flex-col items-center gap-2 bg-white rounded-xl px-6 py-4 shadow-lg pointer-events-auto">
+            <i class="pi pi-spin pi-spinner text-2xl text-forest"></i>
+            <p class="text-sm font-semibold text-stone-600">Loading trees…</p>
+          </div>
+        </div>
+      }
+
       <!-- Layer toggle -->
-      <div class="absolute top-4 right-4 z-1000 flex shadow-lg rounded-lg overflow-hidden bg-white/95 backdrop-blur border border-slate-200/80">
+      <div class="absolute top-4 right-4 z-[400] flex shadow-lg rounded-lg overflow-hidden bg-white/95 backdrop-blur border border-slate-200/80">
         <span class="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-r border-slate-200 self-center">Layer</span>
         <button
           type="button"
           (click)="setLayer('positron')"
-          class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-0 cursor-pointer bg-transparent"
+          class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-0 cursor-pointer"
           [class.bg-primary]="currentLayer === 'positron'"
           [class.text-white]="currentLayer === 'positron'"
+          [class.bg-transparent]="currentLayer !== 'positron'"
           [class.text-slate-600]="currentLayer !== 'positron'"
-          [class.hover:bg-slate-100]="currentLayer !== 'positron'"
         >
           <i class="pi pi-map"></i>
           <span>Positron</span>
@@ -174,11 +185,11 @@
         <button
           type="button"
           (click)="setLayer('satellite')"
-          class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-l border-slate-200/80 border-0 cursor-pointer bg-transparent"
+          class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-l border-slate-200/80 border-0 cursor-pointer"
           [class.bg-primary]="currentLayer === 'satellite'"
           [class.text-white]="currentLayer === 'satellite'"
+          [class.bg-transparent]="currentLayer !== 'satellite'"
           [class.text-slate-600]="currentLayer !== 'satellite'"
-          [class.hover:bg-slate-100]="currentLayer !== 'satellite'"
         >
           <i class="pi pi-globe"></i>
           <span>Satellite</span>
@@ -186,11 +197,12 @@
       </div>
 
       <!-- Filters card -->
-      <div class="absolute top-6 left-6 max-w-sm hidden md:block z-1000">
+      <div class="absolute top-6 left-6 max-w-sm hidden md:block z-[400]">
         <p-card styleClass="bg-white/95 shadow-2xl border border-white/20">
           <h2 class="text-xl font-bold tracking-tight text-slate-900 mb-2">Map View</h2>
           <p class="text-slate-600 text-sm leading-relaxed mb-3">
-            {{ trees.length }} trees. Click a marker to view details. Switch layer (Positron / Satellite) as needed.
+            @if (loadingMap) { <i class="pi pi-spin pi-spinner text-xs mr-1"></i>Loading… }
+            @else { {{ trees.length | number }} trees shown. Click a dot for details. }
           </p>
           <div class="flex items-center gap-4 flex-wrap">
             <div class="flex flex-col">
@@ -239,41 +251,17 @@
               <div class="px-3 pb-3 pt-1 grid grid-cols-1 gap-2">
                 <div class="grid grid-cols-12 items-center gap-2">
                   <span class="text-sm text-slate-600 col-span-3">Height</span>
-                  <p-dropdown
-                    [(ngModel)]="heightOp"
-                    [options]="numericOpOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    [showClear]="false"
-                    styleClass="w-full col-span-3"
-                    (onChange)="loadMapTrees()"
-                  />
+                  <p-dropdown [(ngModel)]="heightOp" [options]="numericOpOptions" optionLabel="label" optionValue="value" [showClear]="false" styleClass="w-full col-span-3" (onChange)="loadMapTrees()" />
                   <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="heightValue" (input)="onMapFilterInput()" />
                 </div>
                 <div class="grid grid-cols-12 items-center gap-2">
                   <span class="text-sm text-slate-600 col-span-3">DBH</span>
-                  <p-dropdown
-                    [(ngModel)]="dbhOp"
-                    [options]="numericOpOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    [showClear]="false"
-                    styleClass="w-full col-span-3"
-                    (onChange)="loadMapTrees()"
-                  />
+                  <p-dropdown [(ngModel)]="dbhOp" [options]="numericOpOptions" optionLabel="label" optionValue="value" [showClear]="false" styleClass="w-full col-span-3" (onChange)="loadMapTrees()" />
                   <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="dbhValue" (input)="onMapFilterInput()" />
                 </div>
                 <div class="grid grid-cols-12 items-center gap-2">
                   <span class="text-sm text-slate-600 col-span-3">Canopy</span>
-                  <p-dropdown
-                    [(ngModel)]="canopyOp"
-                    [options]="numericOpOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    [showClear]="false"
-                    styleClass="w-full col-span-3"
-                    (onChange)="loadMapTrees()"
-                  />
+                  <p-dropdown [(ngModel)]="canopyOp" [options]="numericOpOptions" optionLabel="label" optionValue="value" [showClear]="false" styleClass="w-full col-span-3" (onChange)="loadMapTrees()" />
                   <input pInputText type="number" class="w-full col-span-6" placeholder="m" [(ngModel)]="canopyValue" (input)="onMapFilterInput()" />
                 </div>
               </div>

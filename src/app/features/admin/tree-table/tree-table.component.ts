@@ -43,7 +43,7 @@ import { TreeEditDialogComponent } from '../tree-edit-dialog/tree-edit-dialog.co
     <app-tree-edit-dialog
       [(visible)]="editDialogVisible"
       [tree]="editingTree"
-      (treeSaved)="loadTrees()"
+      (treeSaved)="onTreeSaved($event)"
     />
     <div class="bg-white rounded-xl border border-stone-200 overflow-hidden">
       <!-- Filters -->
@@ -374,6 +374,17 @@ export class TreeTableComponent implements OnInit {
     this.canopyOp = null;
     this.canopyValue = null;
     this.loadTrees(1);
+  }
+
+  onTreeSaved(partial: Partial<Tree>): void {
+    if (this.editingTree) {
+      const idx = this.trees.findIndex(t => t.id === this.editingTree!.id);
+      if (idx >= 0) {
+        this.trees[idx] = { ...this.trees[idx], ...partial };
+        this.trees = [...this.trees];
+      }
+    }
+    this.loadTrees();
   }
 
   openEdit(event: Event, tree: Tree): void {

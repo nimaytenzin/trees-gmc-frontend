@@ -88,6 +88,14 @@
   }
 }
 
+.survey-legend-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 400;
+  pointer-events: auto;
+}
+
 :host ::ng-deep {
   .survey-legend {
     background: rgba(255, 255, 255, 0.92);
